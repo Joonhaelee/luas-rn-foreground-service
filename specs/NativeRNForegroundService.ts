@@ -14,14 +14,14 @@ export interface RNSimpleNotif {
     channelId: string;
     title: string;
     /**
-     * notification message.
+     * notification body(message)
      * if notification NOT expanded(default head up)\
      * - title and message will be shown. longMessage will NOT be shown\n
      * if notification expanded(pressed right chevron down)
      * - if longMessage provided, title and longMessage will be shown and message will NOT be shown
      * - if longMessage NOT provided, title and message will be shown
      */
-    message: string;
+    body: string;
     /**
      * notification long message.
      * if message is long
@@ -30,7 +30,7 @@ export interface RNSimpleNotif {
      * - if longMessage provided, title and longMessage will be shown and message will NOT be shown
      * - if longMessage NOT provided, title and message will be shown
      */
-    longMessage?: string;
+    longBody?: string;
 }
 export interface RNNotificationChannel {
     channelId: string;

@@ -46,7 +46,7 @@ export function Service() {
                         await startService({
                             channelId: serviceNotificationChannel.channelId,
                             title: 'Start',
-                            message: new Date().toISOString(),
+                            body: new Date().toISOString(),
                             ongoing: true,
                             button1: {
                                 label: 'button1',
@@ -76,7 +76,7 @@ export function Service() {
                         await updateServiceNotification({
                             channelId: serviceNotificationChannel.channelId,
                             title: 'Updated',
-                            message: new Date().toISOString(),
+                            body: new Date().toISOString(),
                             button1: {
                                 label: 'button10',
                                 value: 'button10Value',
@@ -109,7 +109,7 @@ export function Service() {
                                 Math.floor(Math.random() * (100000 - 1)),
                             channelId: serviceNotificationChannel.channelId,
                             title: `ID=${9999} Updated`,
-                            message: new Date().toISOString(),
+                            body: new Date().toISOString(),
                             button1: {
                                 label: 'button20',
                                 value: 'button20Value',

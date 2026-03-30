@@ -35,8 +35,8 @@ Notification message Notification message Notification message Notification mess
                         const id = await postNotification({
                             channelId: miscNotificationChannel.channelId,
                             title: `New Notification`,
-                            message,
-                            longMessage,
+                            body: message,
+                            longBody: longMessage,
                             ongoing: true,
                             autoCancel: false,
                         });
@@ -58,8 +58,8 @@ Notification message Notification message Notification message Notification mess
                         const id = await postNotification({
                             channelId: miscNotificationChannel.channelId,
                             title: `New Notification`,
-                            message,
-                            longMessage,
+                            body: message,
+                            longBody: longMessage,
                             ongoing: false,
                             autoCancel: true,
                         });
@@ -85,7 +85,7 @@ Notification message Notification message Notification message Notification mess
                                 channelId: miscNotificationChannel.channelId,
                                 id: latestNotificationId,
                                 title: '(title) Same Notification',
-                                message: message,
+                                body: message,
                             });
                         } catch (e: any) {
                             Alert.alert('error. ' + e.message);
@@ -103,7 +103,7 @@ Notification message Notification message Notification message Notification mess
                         await postNotification({
                             channelId: miscNotificationChannel.channelId,
                             title: '(button) Notification',
-                            message: message,
+                            body: message,
                             button1: {
                                 label: 'button100',
                                 value: 'button100Value',
@@ -128,7 +128,7 @@ Notification message Notification message Notification message Notification mess
                         await postNotification({
                             channelId: miscNotificationChannel.channelId,
                             title: '(largeIcon) Notification',
-                            message: message,
+                            body: message,
                             largeIcon: 'ic_launcher',
                             ongoing: true,
                             autoCancel: false,

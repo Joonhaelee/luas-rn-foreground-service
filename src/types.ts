@@ -125,5 +125,5 @@ export type EventListenerCleanup = () => void;
  * Channel configuration for hooks
  */
 export type ChannelNotificationConfig = RNNotificationChannel & {
-    defaultNotification?: Omit<RNNotification, 'channelId' | 'title' | 'message'>;
+    defaultNotification?: Partial<Omit<RNNotification, 'channelId'>>;
 };
