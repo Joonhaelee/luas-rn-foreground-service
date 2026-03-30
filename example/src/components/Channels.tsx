@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
-import { useRNNotificationChannels, type RNNotificationChannel } from 'luas-rn-foreground-service';
+import { useRNNotificationChannels, type RNNotificationChannel } from '@luas/rn-foreground-service';
 import { notificationChannels } from '../notificationConfig';
 
 function Channel(channel: { channel: RNNotificationChannel }) {

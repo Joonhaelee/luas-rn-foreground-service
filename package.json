@@ -1,7 +1,7 @@
 {
-    "name": "luas-rn-foreground-service",
+    "name": "@luas/rn-foreground-service",
     "version": "0.1.1",
-    "description": "android foreground service with periodic task and notification",
+    "description": "android foreground service with turbo module with periodic task and notification",
     "main": "./lib/module/index.js",
     "types": "./lib/typescript/src/index.d.ts",
     "exports": {
@@ -16,7 +16,6 @@
         "src",
         "lib",
         "android",
-        "ios",
         "cpp",
         "*.podspec",
         "react-native.config.js",
@@ -32,7 +31,7 @@
         "!**/.*"
     ],
     "scripts": {
-        "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+        "clean": "del-cli android/build example/android/build example/android/app/build lib",
         "prepare": "bob build",
         "typecheck": "tsc",
         "lint": "eslint \"**/*.{js,ts,tsx}\"",

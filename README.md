@@ -1,4 +1,4 @@
-# luas-rn-foreground-service
+# @luas/rn-foreground-service
 
 Modern React Native foreground service library with TurboModule support. Full Android 14 compliance with task management, customizable notifications, and event handling, periodic task.
 
@@ -30,9 +30,9 @@ Modern React Native foreground service library with TurboModule support. Full An
 ## Installation
 
 ```sh
-$> yarn add luas-rn-foreground-service
+$> yarn add @luas/rn-foreground-service
 or
-$> npm install luas-rn-foreground-service
+$> npm install @luas/rn-foreground-service
 ```
 
 **Requirements:**

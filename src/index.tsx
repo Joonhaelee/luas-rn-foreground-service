@@ -1,5 +1,5 @@
 /**
- * @kirenpaul/rn-foreground-service-turbo
+ * @luas/rn-foreground-service-turbo
  *
  * Modern React Native foreground service library with TurboModule support.
  * Full Android 14 compliance with task management and customizable notifications.

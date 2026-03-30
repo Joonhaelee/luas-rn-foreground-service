@@ -80,11 +80,11 @@ export class RNForegroundServiceManager {
      * @example
      * ```typescript
      * // index.ts
-     * import ForegroundService from 'luas-rn-foreground-service-turbo';
+     * import { RNForegroundServiceManager } from '@luas/rn-foreground-service';
      * import { AppRegistry } from 'react-native';
      * import App from './App';
      *
-     * ForegroundService.registerHeadlessTask();
+     * RNForegroundServiceManager.registerHeadlessTask();
      * AppRegistry.registerComponent('MyApp', () => App);
      * ```
      */

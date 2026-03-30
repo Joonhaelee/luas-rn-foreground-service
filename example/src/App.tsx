@@ -5,7 +5,7 @@ import { Service } from './components/Service';
 import { Notification } from './components/Notification';
 
 export default function App() {
-    const [mode, setMode] = React.useState<'channel' | 'service' | 'notification'>('service');
+    const [mode, setMode] = React.useState<'channel' | 'service' | 'notification'>('channel');
 
     return (
         <View style={styles.container}>

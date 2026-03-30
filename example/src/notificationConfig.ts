@@ -1,4 +1,4 @@
-import type { ChannelNotificationConfig } from 'luas-rn-foreground-service';
+import type { ChannelNotificationConfig } from '@luas/rn-foreground-service';
 
 export const serviceNotificationChannel: ChannelNotificationConfig = {
     channelId: 'foregroundService',
@@ -6,7 +6,7 @@ export const serviceNotificationChannel: ChannelNotificationConfig = {
     channelDescription: 'ForegroundService description',
     defaultNotification: {
         id: 9876,
-        serviceType: 'dataSync',
+        serviceType: 'location',
         icon: 'notification_icon',
     },
 };

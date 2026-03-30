@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
-import { useRNForegroundService, type TaskRunInfo } from 'luas-rn-foreground-service';
+import { useRNForegroundService, type TaskRunInfo } from '@luas/rn-foreground-service';
 import { notificationChannels, serviceNotificationChannel } from '../notificationConfig';
 
 export function Service() {
