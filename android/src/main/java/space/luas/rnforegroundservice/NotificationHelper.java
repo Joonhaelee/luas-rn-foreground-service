@@ -170,8 +170,8 @@ class NotificationHelper {
         boolean setOnlyAlertOnce = bundle.getBoolean("setOnlyAlertOnce", false);
         boolean ongoing = bundle.getBoolean("ongoing", false);
         boolean autoCancel = bundle.getBoolean("autoCancel", false);
-        String title = bundle.getString("title", "Foreground Service");
-        String message = bundle.getString("message", "Running...");
+        String title = bundle.getString("title", "Title");
+        String message = bundle.getString("body", "Body");
 
         NotificationCompat.Builder notificationBuilder =
                 new NotificationCompat.Builder(context, channelId)
@@ -208,9 +208,9 @@ class NotificationHelper {
             notificationBuilder.setNumber(badge);
         }
         // long message as Big text style
-        String longMessage = bundle.getString("longMessage");
-        if (longMessage != null) {
-            notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(longMessage));
+        String longBody = bundle.getString("longBody");
+        if (longBody != null) {
+            notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(longBody));
         }
         // button1, button2
         this.addCustomButton(notificationBuilder, bundle, "button1", NotificationEventReceiver.ACTION_NOTIFICATION_BUTTON1);

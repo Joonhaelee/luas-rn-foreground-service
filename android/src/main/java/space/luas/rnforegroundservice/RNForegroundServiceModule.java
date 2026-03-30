@@ -397,9 +397,9 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
                     "Notification config is invalid - title is required");
             return false;
         }
-        if (!config.hasKey("message")) {
+        if (!config.hasKey("body")) {
             promise.reject(Constants.ERROR_INVALID_CONFIG,
-                    "Notification config is invalid - message is required");
+                    "Notification config is invalid - body is required");
             return false;
         }
 
