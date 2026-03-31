@@ -16,7 +16,7 @@ export function Service() {
         removeAllTasks,
     } = useRNForegroundService(notificationChannels);
 
-    const [tasks, setTasks] = React.useState<TaskRunInfo[]>([]);
+    const [tasks, setTasks] = React.useState<Partial<TaskRunInfo>[]>([]);
 
     React.useEffect(() => {
         return addOnNotificationPress(async (e) => {
@@ -138,8 +138,8 @@ export function Service() {
                         const taskId = addTask(taskRunner, {
                             taskName: 'myTask',
                             taskParam: { param1: 'value1' },
-                            delay: 5000,
-                            onLoop: true,
+                            interval: 5000,
+                            repeat: true,
                             onSuccess: () => {
                                 console.log(`ForegroundServiceManager.task() onSuccess()`);
                             },

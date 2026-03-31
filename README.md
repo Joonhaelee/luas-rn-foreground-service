@@ -6,7 +6,7 @@ Modern React Native foreground service library with TurboModule support. Full An
 
 ## forked from [**@kirenpaul/react-native-foreground-service-turbo**](<[http](https://www.npmjs.com/package/@kirenpaul/react-native-foreground-service-turbo)>)
 
--   Most of features came from original package and totaly inspired from it.
+-   Most of features came from original package and totally inspired from it.
 -   Some of functions are simplified and customized.
 -   Prior android 8 compatability removed.
 -   Full running sample added.
@@ -67,7 +67,7 @@ In your `index.js` or `index.tsx`:
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
 import App from './App';
-import { RNForegroundServiceManager } from 'luas-rn-foreground-service';
+import { RNForegroundServiceManager } from '@luas/rn-foreground-service';
 
 // Register headless task for foreground service BEFORE registering app component
 // if you don't use foreground service, it is not required.
@@ -101,7 +101,7 @@ async function requestNotificationPermission() {
 -   look example/src/notificationConfig.ts
 
 ```typescript
-import { ChannelNotificationConfig } from 'luas-rn-foreground-service';
+import { ChannelNotificationConfig } from '@luas/rn-foreground-service';
 
 export const serviceNotificationChannel: ChannelNotificationConfig = {
     channelId: 'foregroundService',
@@ -132,7 +132,7 @@ export const notificationChannels: ChannelNotificationConfig[] = [serviceNotific
 -   for details of channel, look android notification official document.
 
 ```typescript
-import { useRNNotificationChannels } from 'luas-rn-foreground-service';
+import { useRNNotificationChannels } from '@luas/rn-foreground-service';
 import { notificationChannels } from '../notificationConfig';
 
 export function YourComponentOrApp() {
@@ -156,7 +156,7 @@ export function YourComponentOrApp() {
 -   highly recommend to use "useRNForegroundService" hook.
 
 ```typescript
-import { useRNForegroundService, type TaskRunInfo } from 'luas-rn-foreground-service';
+import { useRNForegroundService, type TaskRunInfo } from '@luas/rn-foreground-service';
 import { notificationChannels, serviceNotificationChannel } from '../notificationConfig';
 
 export function Service() {
@@ -212,7 +212,7 @@ export function Service() {
 
 ```typescript
 
-import { useRNNotification } from 'luas-rn-foreground-service';
+import { useRNNotification } from '@luas/rn-foreground-service';
 import { notificationChannels, serviceNotificationChannel } from '../notificationConfig';
 
 export function Notification() {

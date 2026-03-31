@@ -26,17 +26,15 @@ export type NotificationPriority = RNNotification['priority'];
  */
 export interface TaskOptions {
     /**
-     * Delay before first execution (milliseconds)
-     * @default 5000
+     * interval as milliseconds
+     * @default 10000
      */
-    delay?: number;
-
+    interval?: number;
     /**
      * Whether task should repeat
      * @default true
      */
-    onLoop?: boolean;
-
+    repeat?: boolean;
     /**
      * Unique task identifier
      * @default auto-generated
@@ -44,39 +42,35 @@ export interface TaskOptions {
     taskId?: string;
     taskName?: string;
     taskParam?: Record<string, string>;
-
     /**
      * Callback called when task completes successfully
      */
     onSuccess?: () => void;
-
     /**
      * Callback called when task encounters an error
      */
     onError?: (error: Error) => void;
-}
-
-export type TaskRunInfo = Pick<TaskOptions, 'taskId' | 'taskName' | 'taskParam'> & {
-    // task tick count
-    tickCount: number;
     // task caller to tell if runner called by foreground service or other process
     caller?: string;
-};
+}
+
+interface TaskRuntime {
+    startedAt: Date;
+    tickCount: number;
+}
+
+export interface TaskRunInfo extends TaskOptions, TaskRuntime {}
 
 export type TaskRunner = (taskInfo: TaskRunInfo) => Promise<void> | void;
 /**
  * Internal task representation
  * @internal
  */
-export interface Task extends TaskOptions {
+export interface Task extends TaskRunInfo {
     /**
      * Task function to execute
      */
     runner: TaskRunner;
-    /**
-     * Task run count
-     */
-    tickCount: number;
     /**
      * Next scheduled execution time (timestamp)
      * @internal
@@ -86,7 +80,7 @@ export interface Task extends TaskOptions {
      * Actual delay used (rounded to sampling interval)
      * @internal
      */
-    delay: number;
+    interval: number;
 }
 
 /**

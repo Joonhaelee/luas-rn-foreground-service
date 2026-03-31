@@ -401,20 +401,12 @@ export class RNForegroundServiceManager {
                     if (now >= task.nextExecutionTime) {
                         task.tickCount = task.tickCount + 1;
                         promises.push(
-                            Promise.resolve(
-                                task.runner({
-                                    taskId: task.taskId,
-                                    taskName: task.taskName,
-                                    taskParam: task.taskParam,
-                                    tickCount: task.tickCount,
-                                    caller: 'service',
-                                })
-                            )
+                            Promise.resolve(task.runner(task))
                                 .then(() => task.onSuccess?.())
                                 .catch((error) => task.onError?.(error))
                         );
-                        if (task.onLoop) {
-                            task.nextExecutionTime = now + task.delay;
+                        if (task.repeat) {
+                            task.nextExecutionTime = now + task.interval;
                             return task;
                         } else {
                             return undefined;
@@ -458,34 +450,26 @@ export class RNForegroundServiceManager {
         if (!NativeForegroundService.isRunning()) {
             throw new Error('task can not be added. service is not running');
         }
-        const taskId = options.taskId || this.generateTaskId();
-        const delay = options.delay || 5000;
-        const onLoop = options.onLoop ?? true;
-
-        const found = this.tasks.find((t) => t.taskId === taskId);
-
-        if (!found) {
-            this.tasks = [
-                {
-                    runner,
-                    delay: Math.ceil(delay / this.samplingInterval) * this.samplingInterval,
-                    onLoop,
-                    taskId,
-                    taskParam: options.taskParam,
-                    tickCount: 0,
-                    onSuccess: options.onSuccess,
-                    onError: options.onError,
-                    nextExecutionTime: Date.now(),
-                },
-                ...this.tasks,
-            ];
+        const task: Task = {
+            ...options,
+            runner,
+            interval: Math.ceil((options.interval || 10000) / this.samplingInterval) * this.samplingInterval,
+            repeat: options.repeat ?? true,
+            taskId: options.taskId || this.generateTaskId(),
+            startedAt: new Date(),
+            tickCount: 0,
+            nextExecutionTime: Date.now(),
+            caller: options.caller ?? 'service',
+        };
+        if (this.tasks.find((t) => t.taskId === task.taskId) === undefined) {
+            this.tasks = [task, ...this.tasks];
             if (this.debug) {
-                console.log(`task added. taskId=${taskId}, interval=${delay}, onLoop=${onLoop}`);
+                console.log(`task added.`, task);
             }
         } else {
-            console.log(`can not add task. already existing taskId=${taskId}`);
+            console.log(`can not add task. same taskId "${task.taskId}" already exist.`);
         }
-        return taskId;
+        return task.taskId as string;
     }
 
     /**
@@ -500,16 +484,16 @@ export class RNForegroundServiceManager {
         this.tasks = this.tasks.map((task) => {
             if (task.taskId === options.taskId) {
                 found = true;
-                const delay = options.delay ?? task.delay ?? 5000;
-                const onLoop = options.onLoop ?? task.onLoop ?? true;
+                const interval = options.interval ?? task.interval ?? 10000;
+                const repeat = options.repeat ?? task.repeat ?? true;
                 if (this.debug) {
-                    console.log(`task updated. taskId=${options.taskId}, interval=${delay}, onLoop=${onLoop}`);
+                    console.log(`task updated. taskId=${options.taskId}, interval=${interval}, onLoop=${repeat}`);
                 }
                 return {
                     ...task,
                     runner,
-                    delay: Math.ceil(delay / this.samplingInterval) * this.samplingInterval,
-                    onLoop,
+                    interval: Math.ceil(interval / this.samplingInterval) * this.samplingInterval,
+                    repeat,
                     taskParam: options.taskParam ?? task.taskParam,
                     onSuccess: options.onSuccess ?? task.onSuccess,
                     onError: options.onError ?? task.onError,
