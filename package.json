@@ -1,6 +1,6 @@
 {
     "name": "@luas/rn-foreground-service",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "android foreground service with turbo module with periodic task and notification",
     "main": "./lib/module/index.js",
     "types": "./lib/typescript/src/index.d.ts",
@@ -114,7 +114,7 @@
     "codegenConfig": {
         "name": "RNForegroundServiceSpec",
         "type": "modules",
-        "jsSrcsDir": "specs",
+        "jsSrcsDir": "src",
         "android": {
             "javaPackageName": "space.luas.rnforegroundservice"
         }

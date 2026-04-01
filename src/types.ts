@@ -1,6 +1,6 @@
-import type { RNNotificationChannel, RNNotification } from '../specs/NativeRNForegroundService';
+import type { RNNotificationChannel, RNNotification } from './NativeRNForegroundService';
 
-export type { RNNotificationChannel, RNNotification, RNSimpleNotif } from '../specs/NativeRNForegroundService';
+export type { RNNotificationChannel, RNNotification, RNSimpleNotif } from './NativeRNForegroundService';
 
 /**
  * Service types for Android 14+ foreground services. 'dataSync' | 'location' | 'mediaPlayback';

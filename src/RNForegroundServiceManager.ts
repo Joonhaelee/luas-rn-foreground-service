@@ -1,5 +1,5 @@
 import { NativeModules, NativeEventEmitter, AppRegistry, Platform } from 'react-native';
-import NativeForegroundService from '../specs/NativeRNForegroundService';
+import NativeForegroundService from './NativeRNForegroundService';
 import type {
     Task,
     TaskOptions,

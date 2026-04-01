@@ -3,7 +3,8 @@
     "rootDir": ".",
     "paths": {
       "@luas/rn-foreground-service": [
-        "./src/index"
+        "./src/index",
+        "./specs"
       ]
     },
     "allowUnreachableCode": false,
