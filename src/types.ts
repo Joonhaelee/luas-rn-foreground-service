@@ -54,7 +54,7 @@ export interface TaskOptions {
     caller?: string;
 }
 
-interface TaskRuntime {
+export interface TaskRuntime {
     startedAt: Date;
     tickCount: number;
 }
