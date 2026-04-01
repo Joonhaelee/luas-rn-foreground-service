@@ -41,7 +41,7 @@ export interface TaskOptions {
      */
     taskId?: string;
     taskName?: string;
-    taskParam?: Record<string, string>;
+    taskParam?: Record<string, string> | string;
     /**
      * Callback called when task completes successfully
      */
