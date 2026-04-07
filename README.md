@@ -210,7 +210,7 @@ export function Service() {
 -   highly recommend to use "useRNNotification" hook.
 -
 
-```typescript
+````typescript
 
 import { useRNNotification } from '@luas/rn-foreground-service';
 import { notificationChannels, serviceNotificationChannel } from '../notificationConfig';
@@ -238,6 +238,37 @@ export function Notification() {
     ...
 }
 
+## Limitation
+
+### state values **NOT** reset when app COLD restart
+- If app swiped out by user while service is running,
+  state values does NOT reset. it seems that foreground service associated with js bundle.
+- There are 2 options to avoid this issue.
+  1) stop service when app closed.
+   - to do this set "stopWithTask=true" on your AndroidManifest.xml
+```xml
+    <!-- Foregrond service -->
+    <service android:name="luas.space.luas.rnforegroundservice.ForegroundService"
+        android:exported="false"
+        android:stopWithTask="true"
+        android:foregroundServiceType="dataSync|location|mediaPlayback" />
+
+    <!-- Headless task service -->
+    <service android:name="luas.space.luas.rnforegroundservice.ForegroundServiceHeadlessTask"
+        android:stopWithTask="true"
+        android:exported="false" />
+````
+
+2. detect app COLD launch, then do what you should
+
+```typescript your App.tsx
+React.useEffect(() => {
+    setYourInitialState();
+}, []);
+```
+
+\*\*/
+
 ## Contributing
 
 -   [Development workflow](CONTRIBUTING.md#development-workflow)
@@ -251,4 +282,7 @@ MIT
 ---
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
+
+```
+
 ```

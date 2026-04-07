@@ -269,6 +269,7 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
             promise.reject(Constants.ERROR_INVALID_CONFIG, "delay is required");
             return;
         }
+        Log.d(TAG, "starting runHeadlessTask()...");
 
         try {
             Intent intent = new Intent(reactContext, ForegroundService.class);

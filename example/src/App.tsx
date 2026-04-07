@@ -3,40 +3,43 @@ import { Text, View, StyleSheet, Pressable } from 'react-native';
 import { Channels } from './components/Channels';
 import { Service } from './components/Service';
 import { Notification } from './components/Notification';
+import { AppInitProvider } from './contexts/AppInitProvider';
 
 export default function App() {
     const [mode, setMode] = React.useState<'channel' | 'service' | 'notification'>('channel');
 
     return (
-        <View style={styles.container}>
-            <View style={styles.tabContainer}>
-                <Pressable
-                    onPress={() => {
-                        setMode('channel');
-                    }}
-                    style={[styles.tab, mode === 'channel' ? styles.activeTab : undefined]}
-                >
-                    <Text style={styles.tabText}>Channel</Text>
-                </Pressable>
-                <Pressable
-                    onPress={() => {
-                        setMode('service');
-                    }}
-                    style={[styles.tab, mode === 'service' ? styles.activeTab : undefined]}
-                >
-                    <Text style={styles.tabText}>Service</Text>
-                </Pressable>
-                <Pressable
-                    onPress={() => {
-                        setMode('notification');
-                    }}
-                    style={[styles.tab, mode === 'notification' ? styles.activeTab : undefined]}
-                >
-                    <Text style={styles.tabText}>Notification</Text>
-                </Pressable>
+        <AppInitProvider>
+            <View style={styles.container}>
+                <View style={styles.tabContainer}>
+                    <Pressable
+                        onPress={() => {
+                            setMode('channel');
+                        }}
+                        style={[styles.tab, mode === 'channel' ? styles.activeTab : undefined]}
+                    >
+                        <Text style={styles.tabText}>Channel</Text>
+                    </Pressable>
+                    <Pressable
+                        onPress={() => {
+                            setMode('service');
+                        }}
+                        style={[styles.tab, mode === 'service' ? styles.activeTab : undefined]}
+                    >
+                        <Text style={styles.tabText}>Service</Text>
+                    </Pressable>
+                    <Pressable
+                        onPress={() => {
+                            setMode('notification');
+                        }}
+                        style={[styles.tab, mode === 'notification' ? styles.activeTab : undefined]}
+                    >
+                        <Text style={styles.tabText}>Notification</Text>
+                    </Pressable>
+                </View>
+                {mode === 'channel' ? <Channels /> : mode === 'service' ? <Service /> : <Notification />}
             </View>
-            {mode === 'channel' ? <Channels /> : mode === 'service' ? <Service /> : <Notification />}
-        </View>
+        </AppInitProvider>
     );
 }
 

@@ -23,8 +23,8 @@ class MainActivity : ReactActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
       // recommendation from react-navigation & react-native-screens?
-      // super.onCreate(savedInstanceState)
-      super.onCreate(null)
+       super.onCreate(savedInstanceState)
+//      super.onCreate(null)
   }
 
 }

@@ -197,6 +197,21 @@ export class RNForegroundServiceManager {
         }
     }
 
+    // static async runAssociatedHeadlessTask() {
+    //     /* Start headless task runner
+    //      * android looper repeated on every samplingInterval(1s)
+    //      * then, on headlessTaskRunner(), it will apply task interval
+    //      */
+    //     await NativeForegroundService.runHeadlessTask({
+    //         taskName: this.headlessTaskName,
+    //         // onetime task 에 사용되는 delay
+    //         delay: this.samplingInterval,
+    //         // repeatable task 에 사용되는 delay
+    //         loopDelay: this.samplingInterval,
+    //         onLoop: true,
+    //     });
+    // }
+
     /**
      * Update the notification of a running service
      * Then notification will be alerted regardless service is running or not.
@@ -286,7 +301,9 @@ export class RNForegroundServiceManager {
             if (!rt) {
                 console.warn(`stopService() done. but awaited NativeForegroundService.isRunning() is still true`);
             } else if (this.debug) {
-                console.log(`Foreground service stopped. NativeForegroundService.isRunning()=${rt}`);
+                console.log(
+                    `Foreground service stopped. NativeForegroundService.isRunning()=${NativeForegroundService.isRunning()}`
+                );
             }
         }
         return stopped;

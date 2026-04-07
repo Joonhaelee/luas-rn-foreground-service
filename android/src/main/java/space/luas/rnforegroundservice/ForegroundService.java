@@ -103,7 +103,7 @@ public class ForegroundService extends Service {
                 break;
 
             case Constants.ACTION_RUN_HEADLESS_TASK:
-                handleRunTask(intent);
+                handleRunHeadlessTask(intent);
                 break;
 
             default:
@@ -206,23 +206,22 @@ public class ForegroundService extends Service {
     /**
      * Handle ACTION_RUN_HEADLESS_TASK
      */
-    private void handleRunTask(Intent intent) {
+    private void handleRunHeadlessTask(Intent intent) {
         if (intent.getExtras() == null || !intent.getExtras().containsKey(Constants.HEADLESS_TASK_CONFIG)) {
             Log.w(TAG, "Run task called without task config");
             return;
         }
-
         // Try to restart service if it was killed
         if (!ForegroundService.isRunning) {
             Log.w(TAG, "Can not run task. service is not running");
             return;
         }
-
         taskConfig = intent.getExtras().getBundle(Constants.HEADLESS_TASK_CONFIG);
         if (taskConfig == null) {
             Log.w(TAG, "Task config bundle is null");
             return;
         }
+        Log.d(TAG, "starting handleRunTask()...");
 
         try {
             boolean onLoop = taskConfig.getBoolean("onLoop", false);
@@ -271,7 +270,6 @@ public class ForegroundService extends Service {
                     Log.d(TAG, "Task runner stopped - service not running");
                     return;
                 }
-
                 try {
                     final Intent service = new Intent(context, ForegroundServiceHeadlessTask.class);
                     service.putExtras(taskConfig);
@@ -280,6 +278,7 @@ public class ForegroundService extends Service {
                     // as default, js pass loopDelay to 1000
                     int loopDelay = (int) taskConfig.getDouble("loopDelay", 5000);
                     handler.postDelayed(this, loopDelay);
+                    Log.d(TAG, "Repeatable task runner posted delayed loop");
                 } catch (Exception e) {
                     Log.e(TAG, "Error in task runner", e);
                 }
