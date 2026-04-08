@@ -26,7 +26,7 @@ import type {
  */
 
 async function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(() => resolve(null), ms));
 }
 
 async function waitUntil(start: Date, timeoutMs: number, until: () => boolean) {
@@ -290,23 +290,22 @@ export class RNForegroundServiceManager {
             console.warn(`can not stopService(), NativeForegroundService is not running`);
             return true;
         }
-        const stopped = NativeForegroundService.stopService();
+        await NativeForegroundService.stopService();
         this.tasks = [];
         /* NativeForegroundService.stopService() may not update NativeForegroundService.isRunning() immediately
          * so, here we wait until NativeForegroundService.isRunning() updated to false while 1000ms
          * NativeForegroundService.isRunning() should be false if service stopped successfully.
          */
-        if (stopped) {
-            const rt = await waitUntil(new Date(), 1000, () => !NativeForegroundService.isRunning());
-            if (!rt) {
-                console.warn(`stopService() done. but awaited NativeForegroundService.isRunning() is still true`);
-            } else if (this.debug) {
-                console.log(
-                    `Foreground service stopped. NativeForegroundService.isRunning()=${NativeForegroundService.isRunning()}`
-                );
-            }
+
+        const rt = await waitUntil(new Date(), 1000, () => !NativeForegroundService.isRunning());
+        if (!rt) {
+            console.warn(`stopService() done. but awaited NativeForegroundService.isRunning() is still true`);
+        } else if (this.debug) {
+            console.log(
+                `Foreground service stopped. NativeForegroundService.isRunning()=${NativeForegroundService.isRunning()}`
+            );
         }
-        return stopped;
+        return true;
     }
 
     /**

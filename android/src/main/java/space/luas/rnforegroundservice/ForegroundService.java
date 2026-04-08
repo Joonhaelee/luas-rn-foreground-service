@@ -53,10 +53,9 @@ public class ForegroundService extends Service {
 
     @Override
     public void onDestroy() {
-        // Clean up handler callbacks
-        cleanupResources();
-        ForegroundService.isRunning = false;
-        sendServiceStateChangeEventToReactNative();
+        if (ForegroundService.isRunning) {
+            handleStopService();
+        }
         Log.d(TAG, "onDestroy called");
         super.onDestroy();
     }
@@ -97,15 +96,15 @@ public class ForegroundService extends Service {
             case Constants.ACTION_FOREGROUND_SERVICE_START:
                 handleStartService(intent);
                 break;
-
+            case Constants.ACTION_FOREGROUND_SERVICE_STOP:
+                handleStopService();
+                break;
             case Constants.ACTION_UPDATE_NOTIFICATION:
                 handleUpdateNotification(intent);
                 break;
-
             case Constants.ACTION_RUN_HEADLESS_TASK:
                 handleRunHeadlessTask(intent);
                 break;
-
             default:
                 Log.w(TAG, "Unknown action: " + action);
         }
@@ -164,6 +163,17 @@ public class ForegroundService extends Service {
                 runStartForeground(notificationConfig);
             }
         }
+    }
+
+    /**
+     * Handle ACTION_FOREGROUND_SERVICE_STOP
+     */
+    private void handleStopService() {
+        Log.d(TAG, "Force stopping foreground service");
+        cleanupResources();
+        ForegroundService.isRunning = false;
+        sendServiceStateChangeEventToReactNative();
+        stopSelf();
     }
 
     /**

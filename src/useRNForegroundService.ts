@@ -106,7 +106,7 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
     );
 
     const stopService = React.useCallback(async () => {
-        await RNForegroundServiceManager.stopService(); //  .stopAll();
+        return await RNForegroundServiceManager.stopService(); //  .stopAll();
     }, []);
 
     /** Update notification which associated with foreground service

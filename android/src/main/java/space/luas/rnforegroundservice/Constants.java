@@ -10,6 +10,7 @@ public class Constants {
         // Service actions
         static final String ACTION_FOREGROUND_SERVICE_START =
                         "rnforegroundservice.service_start";
+        static final String ACTION_FOREGROUND_SERVICE_STOP = "rnforegroundservice.service_stop";
         static final String ACTION_RUN_HEADLESS_TASK =
                         "rnforegroundservice.service_headless_run_task";
         static final String ACTION_UPDATE_NOTIFICATION =

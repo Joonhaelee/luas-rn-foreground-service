@@ -213,7 +213,7 @@ export interface Spec extends TurboModule {
      * @note If start() was called multiple times, stop() must be called
      * the same number of times to fully stop the service
      */
-    stopService(): boolean;
+    stopService(): Promise<void>;
 
     /**
      * Update the notification of a running service

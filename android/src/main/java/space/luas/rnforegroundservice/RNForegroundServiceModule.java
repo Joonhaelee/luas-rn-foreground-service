@@ -174,15 +174,31 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
      * @return boolean
      */
     @ReactMethod
-    public boolean stopService() {
+    public void stopService(Promise promise) {
         Intent intent = new Intent(reactContext, ForegroundService.class);
+        intent.setAction(Constants.ACTION_FOREGROUND_SERVICE_STOP);
         try {
-            Log.d(TAG, "stopService -> calling context.stopService()");
-            return reactContext.stopService(intent);
-        } catch (Exception e) {
-            Log.w(TAG, "stopService -> context.stopService() failed");
-            throw e;
+            // Send stop action via startService (service will handle decrement and stop if needed)
+            reactContext.startService(intent);
+            promise.resolve(null);
+        } catch (IllegalStateException e) {
+            // If startService fails, try stopService as fallback
+            try {
+                reactContext.stopService(intent);
+                promise.resolve(null);
+            } catch (Exception e2) {
+                promise.reject(Constants.ERROR_SERVICE_ERROR,
+                    "Service stop failed: " + e2.getMessage(), e2);
+            }
         }
+//        Intent intent = new Intent(reactContext, ForegroundService.class);
+//        try {
+//            Log.d(TAG, "stopService -> calling context.stopService()");
+//            return reactContext.stopService(intent);
+//        } catch (Exception e) {
+//            Log.w(TAG, "stopService -> context.stopService() failed");
+//            throw e;
+//        }
     }
 
     /**
