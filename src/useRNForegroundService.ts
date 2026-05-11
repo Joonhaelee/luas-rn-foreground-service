@@ -97,9 +97,9 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
      * before starting service, notification channel must be registered
      */
     const startService = React.useCallback(
-        async (notif: RNNotification): Promise<number | undefined> => {
+        async (notif: RNNotification, taskInterval?: number): Promise<number | undefined> => {
             const notification = buildNotification(notif);
-            const id = await RNForegroundServiceManager.startService(notification);
+            const id = await RNForegroundServiceManager.startService(notification, taskInterval);
             return id;
         },
         [buildNotification]
@@ -136,7 +136,7 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
         RNForegroundServiceManager.removeTask(taskId);
     }, []);
     const removeAllTasks = React.useCallback(() => {
-        RNForegroundServiceManager.removeAllTasks();
+        RNForegroundServiceManager.clearTasks();
     }, []);
 
     return {

@@ -1,7 +1,6 @@
 import { NativeModules, NativeEventEmitter, AppRegistry, Platform } from 'react-native';
 import NativeForegroundService from './NativeRNForegroundService';
 import type {
-    Task,
     TaskOptions,
     NotificationClickEvent,
     EventListenerCleanup,
@@ -9,6 +8,8 @@ import type {
     RNNotification,
     TaskRunner,
     ForegroundServiceStateChangeEvent,
+    TaskInfo,
+    TaskRuntime,
 } from './types';
 
 /**
@@ -45,11 +46,11 @@ async function waitUntil(start: Date, timeoutMs: number, until: () => boolean) {
 export class RNForegroundServiceManager {
     public static debug: boolean = true;
     public static readonly headlessTaskName = 'RNForegroundServiceHeadlessTask';
-    private static tasks: Task[] = [];
+    private static tasks: TaskRuntime[] = [];
     // Prevent race conditions
     private static serviceStarting = false;
     // headless task loop interval(ms) should be 500 or 1000. this is different than task interval
-    private static samplingInterval = 1000;
+    // private static samplingInterval = 1000;
     private static eventEmitter = new NativeEventEmitter(NativeModules.NativeRNForegroundService);
 
     /** get, create, delete, check notification channel */
@@ -123,7 +124,7 @@ export class RNForegroundServiceManager {
      * ```
      */
 
-    static async startService(notif: RNNotification): Promise<number | undefined> {
+    static async startService(notif: RNNotification, taskInterval?: number): Promise<number | undefined> {
         if (Platform.OS !== 'android') {
             throw new Error('ForegroundService is only supported on Android');
         }
@@ -166,17 +167,20 @@ export class RNForegroundServiceManager {
             await NativeForegroundService.startService(notif);
 
             /* Start headless task runner
-             * android looper repeated on every samplingInterval(1s)
+             * android looper repeated on every taskInterval
              * then, on headlessTaskRunner(), it will apply task interval
              */
-            await NativeForegroundService.runHeadlessTask({
-                taskName: this.headlessTaskName,
-                // onetime task 에 사용되는 delay
-                delay: this.samplingInterval,
-                // repeatable task 에 사용되는 delay
-                loopDelay: this.samplingInterval,
-                onLoop: true,
-            });
+            if (taskInterval !== undefined) {
+                await NativeForegroundService.runHeadlessTask({
+                    taskName: this.headlessTaskName,
+                    // onetime task 에 사용되는 delay
+                    delay: taskInterval,
+                    // repeatable task 에 사용되는 delay
+                    loopDelay: taskInterval,
+                    onLoop: true,
+                });
+                console.log(`startService().runHeadlessTask() callled. interval=${taskInterval}`);
+            }
 
             /* NativeForegroundService.startService() does not update NativeForegroundService.isRunning() immediately
              * since it use broadcast receiver internally.
@@ -410,28 +414,22 @@ export class RNForegroundServiceManager {
             if (!NativeForegroundService.isRunning()) {
                 return;
             }
-            const now = Date.now();
             const promises: Promise<void>[] = [];
             this.tasks = this.tasks
                 .map((task) => {
-                    if (now >= task.nextExecutionTime) {
-                        task.tickCount = task.tickCount + 1;
-                        promises.push(
-                            Promise.resolve(task.runner(task))
-                                .then(() => task.onSuccess?.())
-                                .catch((error) => task.onError?.(error))
-                        );
-                        if (task.repeat) {
-                            task.nextExecutionTime = now + task.interval;
-                            return task;
-                        } else {
-                            return undefined;
-                        }
-                    } else {
+                    task.info.tickCount = task.info.tickCount + 1;
+                    promises.push(
+                        Promise.resolve(task.runner(task.info))
+                            .then(() => task.info.onSuccess?.())
+                            .catch((error) => task.info.onError?.(error))
+                    );
+                    if (task.info.repeat) {
                         return task;
+                    } else {
+                        return undefined;
                     }
                 })
-                .filter(Boolean) as Task[];
+                .filter(Boolean) as TaskRuntime[];
 
             await Promise.all(promises);
         } catch (error) {
@@ -466,62 +464,26 @@ export class RNForegroundServiceManager {
         if (!NativeForegroundService.isRunning()) {
             throw new Error('task can not be added. service is not running');
         }
-        const task: Task = {
-            ...options,
+        const task: { runner: TaskRunner; info: TaskInfo } = {
             runner,
-            interval: Math.ceil((options.interval || 10000) / this.samplingInterval) * this.samplingInterval,
-            repeat: options.repeat ?? true,
-            taskId: options.taskId || this.generateTaskId(),
-            startedAt: new Date(),
-            tickCount: 0,
-            nextExecutionTime: Date.now(),
-            caller: options.caller ?? 'service',
+            info: {
+                ...options,
+                repeat: options.repeat ?? true,
+                taskId: options.taskId || this.generateTaskId(),
+                startedAt: new Date(),
+                tickCount: 0,
+                caller: options.caller ?? 'service',
+            },
         };
-        if (this.tasks.find((t) => t.taskId === task.taskId) === undefined) {
+        if (this.tasks.find((t) => t.info.taskId === task.info.taskId) === undefined) {
             this.tasks = [task, ...this.tasks];
             if (this.debug) {
                 console.log(`task added.`, task);
             }
         } else {
-            console.log(`can not add task. same taskId "${task.taskId}" already exist.`);
+            console.log(`can not add task. same taskId "${task.info.taskId}" already exist.`);
         }
-        return task.taskId as string;
-    }
-
-    /**
-     * Update an existing task
-     *
-     * @param runner Updated task function
-     * @param options Task configuration options (must include taskId)
-     * @returns Task ID string
-     */
-    static updateTask(runner: TaskRunner, options: TaskOptions & { taskId: string }) {
-        let found = false;
-        this.tasks = this.tasks.map((task) => {
-            if (task.taskId === options.taskId) {
-                found = true;
-                const interval = options.interval ?? task.interval ?? 10000;
-                const repeat = options.repeat ?? task.repeat ?? true;
-                if (this.debug) {
-                    console.log(`task updated. taskId=${options.taskId}, interval=${interval}, onLoop=${repeat}`);
-                }
-                return {
-                    ...task,
-                    runner,
-                    interval: Math.ceil(interval / this.samplingInterval) * this.samplingInterval,
-                    repeat,
-                    taskParam: options.taskParam ?? task.taskParam,
-                    onSuccess: options.onSuccess ?? task.onSuccess,
-                    onError: options.onError ?? task.onError,
-                    nextExecutionTime: Date.now(),
-                };
-            } else {
-                return task;
-            }
-        });
-        if (!found) {
-            console.log(`can not update task. taskId=${options.taskId} not found`);
-        }
+        return task.info.taskId as string;
     }
 
     /**
@@ -530,7 +492,7 @@ export class RNForegroundServiceManager {
      * @param taskId Task ID to remove
      */
     static removeTask(taskId: string) {
-        this.tasks = this.tasks.filter((t) => t.taskId !== taskId);
+        this.tasks = this.tasks.filter((t) => t.info.taskId !== taskId);
     }
 
     /**
@@ -540,13 +502,13 @@ export class RNForegroundServiceManager {
      * @returns true if task exists, false otherwise
      */
     static isTaskRunning(taskId: string): boolean {
-        return this.tasks.find((t) => t.taskId === taskId) !== undefined;
+        return this.tasks.find((t) => t.info.taskId === taskId) !== undefined;
     }
 
     /**
      * Remove all tasks from the execution queue
      */
-    static removeAllTasks(): void {
+    static clearTasks(): void {
         this.tasks = [];
         if (this.debug) {
             console.log(`all tasks cleared`);
@@ -559,8 +521,8 @@ export class RNForegroundServiceManager {
      * @param taskId Task ID
      * @returns Task object or undefined if not found
      */
-    static getTask(taskId: string): Task | undefined {
-        return this.tasks.find((t) => t.taskId === taskId);
+    static getTask(taskId: string): TaskRuntime | undefined {
+        return this.tasks.find((t) => t.info.taskId === taskId);
     }
 
     /**
@@ -568,7 +530,7 @@ export class RNForegroundServiceManager {
      *
      * @returns Object containing all tasks
      */
-    static getAllTasks(): Task[] {
+    static getAllTasks(): TaskRuntime[] {
         return this.tasks;
     }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
-import { useRNForegroundService, type TaskRunInfo } from '@luas/rn-foreground-service';
+import { useRNForegroundService, type TaskInfo } from '@luas/rn-foreground-service';
 import { notificationChannels, serviceNotificationChannel } from '../notificationConfig';
 
 export function Service() {
@@ -16,10 +16,10 @@ export function Service() {
         removeAllTasks,
     } = useRNForegroundService(notificationChannels);
 
-    const [tasks, setTasks] = React.useState<Partial<TaskRunInfo>[]>([]);
+    const [tasks, setTasks] = React.useState<Partial<TaskInfo>[]>([]);
 
     React.useEffect(() => {
-        return addOnNotificationPress(async (e) => {
+        return addOnNotificationPress(async (e: any) => {
             if (e.id !== undefined) {
                 try {
                     await cancelNotification(e.id);
@@ -31,7 +31,7 @@ export function Service() {
         });
     }, [addOnNotificationPress, cancelNotification]);
 
-    const taskRunner = React.useCallback((taskInfo: TaskRunInfo) => {
+    const taskRunner = React.useCallback((taskInfo: TaskInfo) => {
         console.log(`[${new Date().toISOString()}] taskRunner called`, taskInfo);
         setTasks((prev) => prev.map((t) => (t.taskId === taskInfo.taskId ? taskInfo : t)));
     }, []);
@@ -43,24 +43,27 @@ export function Service() {
             <Pressable
                 onPress={async () => {
                     try {
-                        await startService({
-                            channelId: serviceNotificationChannel.channelId,
-                            title: 'Start',
-                            body: new Date().toISOString(),
-                            ongoing: true,
-                            button1: {
-                                label: 'button1',
-                                value: 'button1Value',
+                        await startService(
+                            {
+                                channelId: serviceNotificationChannel.channelId,
+                                title: 'Start',
+                                body: new Date().toISOString(),
+                                ongoing: true,
+                                button1: {
+                                    label: 'button1',
+                                    value: 'button1Value',
+                                },
+                                button2: {
+                                    label: 'button2',
+                                    value: 'button2Value',
+                                },
+                                progress: {
+                                    max: 100,
+                                    curr: 0,
+                                },
                             },
-                            button2: {
-                                label: 'button2',
-                                value: 'button2Value',
-                            },
-                            progress: {
-                                max: 100,
-                                curr: 0,
-                            },
-                        });
+                            5000
+                        );
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
                     }
@@ -138,7 +141,7 @@ export function Service() {
                         const taskId = addTask(taskRunner, {
                             taskName: 'myTask',
                             taskParam: { param1: 'value1' },
-                            interval: 5000,
+                            // interval: 5000,
                             repeat: true,
                             onSuccess: () => {
                                 console.log(`ForegroundServiceManager.task() onSuccess()`);

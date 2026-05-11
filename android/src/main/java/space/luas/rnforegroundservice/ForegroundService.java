@@ -235,12 +235,13 @@ public class ForegroundService extends Service {
 
         try {
             boolean onLoop = taskConfig.getBoolean("onLoop", false);
+            int loopDelay = (int) taskConfig.getDouble("loopDelay", 5000);
 
             if (onLoop) {
                 // Start looping task runner
                 initializeRepeatableTaskRunner();
                 if (runnableCode != null) {
-                    handler.post(runnableCode);
+                    handler.postDelayed(runnableCode, loopDelay);
                     Log.d(TAG, "Started looping task runner");
                 }
             } else {

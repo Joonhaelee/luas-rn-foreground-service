@@ -29,7 +29,7 @@ export interface TaskOptions {
      * interval as milliseconds
      * @default 10000
      */
-    interval?: number;
+    // interval?: number;
     /**
      * Whether task should repeat
      * @default true
@@ -54,33 +54,20 @@ export interface TaskOptions {
     caller?: string;
 }
 
-export interface TaskRuntime {
+export interface TaskInfo extends TaskOptions {
     startedAt: Date;
     tickCount: number;
 }
 
-export interface TaskRunInfo extends TaskOptions, TaskRuntime {}
-
-export type TaskRunner = (taskInfo: TaskRunInfo) => Promise<void> | void;
+export type TaskRunner = (taskInfo: TaskInfo) => Promise<void> | void;
 /**
  * Internal task representation
  * @internal
  */
-export interface Task extends TaskRunInfo {
-    /**
-     * Task function to execute
-     */
+
+export interface TaskRuntime {
     runner: TaskRunner;
-    /**
-     * Next scheduled execution time (timestamp)
-     * @internal
-     */
-    nextExecutionTime: number;
-    /**
-     * Actual delay used (rounded to sampling interval)
-     * @internal
-     */
-    interval: number;
+    info: TaskInfo;
 }
 
 /**
