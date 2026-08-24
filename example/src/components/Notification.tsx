@@ -1,12 +1,12 @@
 import React from 'react';
 import { Text, StyleSheet, Pressable, ScrollView, Alert, View } from 'react-native';
 import { useRNNotification } from '@luas/rn-foreground-service';
-import { miscNotificationChannel, notificationChannels } from '../notificationConfig';
+import { defaultNotifications, miscNotificationChannel, notificationChannels } from '../notificationConfig';
 
 export function Notification() {
     const [latestNotificationId, setLatestNotificationId] = React.useState<string | undefined>(undefined);
     const { subscribeNotificationOnPress, postNotification, cancelNotification, cancelAllNotifications } =
-        useRNNotification(notificationChannels);
+        useRNNotification(notificationChannels, defaultNotifications);
 
     React.useEffect(() => {
         return subscribeNotificationOnPress(async (e) => {

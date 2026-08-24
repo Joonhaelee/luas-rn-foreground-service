@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
 import { generateRandomNotificationId, useRNForegroundService, type TaskInfo } from '@luas/rn-foreground-service';
-import { notificationChannels, serviceNotificationChannel } from '../notificationConfig';
+import { defaultNotifications, notificationChannels, serviceNotificationChannel } from '../notificationConfig';
 
 export function Service() {
     const {
@@ -11,7 +11,7 @@ export function Service() {
         stopService,
         updateServiceNotification,
         cancelAllNotifications,
-    } = useRNForegroundService(notificationChannels);
+    } = useRNForegroundService(notificationChannels, defaultNotifications);
     const [latestNotificationId, setLatestNotificationId] = React.useState<string | undefined>(undefined);
 
     React.useEffect(() => {

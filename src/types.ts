@@ -78,10 +78,3 @@ export interface NotificationClickEvent {
  * Event listener cleanup function
  */
 export type EventListenerCleanup = () => void;
-
-/**
- * Channel configuration for hooks
- */
-export type ChannelNotificationConfig = RNNotificationChannel & {
-    defaultNotification?: Partial<Omit<RNNotification, 'channelId'>>;
-};

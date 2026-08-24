@@ -4,9 +4,9 @@ import type {
     RNNotification,
     RNBaseNotif,
     NotificationClickEvent,
-    ChannelNotificationConfig,
     TaskRunner,
     TaskOptions,
+    RNNotificationChannel,
 } from './types';
 
 /**
@@ -17,7 +17,10 @@ import type {
  * @returns foreground service state and utility functions
  *
  */
-export function useRNForegroundService(channelConfigs?: ChannelNotificationConfig[]) {
+export function useRNForegroundService(
+    channelConfigs?: RNNotificationChannel[],
+    defaultNotifications?: Record<string, Partial<Omit<RNNotification, 'channelId'>>>
+) {
     /**
      * state of Foreground Service
      * will be updated if service running state changed.
@@ -76,10 +79,11 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
                         `Notification channel id should be one of ${channelConfigs.map((ch) => ch.channelId).join(',')}`
                     );
                 }
+                const def = defaultNotifications?.[notif.channelId];
                 return {
-                    ...channel.defaultNotification,
+                    ...def,
                     ...notif,
-                    id: notif.id ?? channel.defaultNotification?.id ?? generateRandomNotificationId(),
+                    id: notif.id ?? def?.id ?? generateRandomNotificationId(),
                 };
             } else {
                 return notif.id !== undefined
@@ -90,7 +94,7 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
                       };
             }
         },
-        [channelConfigs]
+        [channelConfigs, defaultNotifications]
     );
 
     /** Start foreground service

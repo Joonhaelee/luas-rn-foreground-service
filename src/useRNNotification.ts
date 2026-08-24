@@ -1,8 +1,12 @@
 import React from 'react';
 import { generateRandomNotificationId, RNForegroundServiceManager } from './RNForegroundServiceManager';
-import type { RNNotification, RNBaseNotif, NotificationClickEvent, ChannelNotificationConfig } from './types';
+import type { RNNotification, RNBaseNotif, NotificationClickEvent, RNNotificationChannel } from './types';
 
-export function useRNNotification(channelConfigs?: ChannelNotificationConfig[]) {
+// export function useRNNotification(channelConfigs?: ChannelNotificationConfig[]) {
+export function useRNNotification(
+    channelConfigs?: RNNotificationChannel[],
+    defaultNotifications?: Record<string, Partial<Omit<RNNotification, 'channelId'>>>
+) {
     const subscribeNotificationOnPress = React.useCallback((eventHandler: (e: NotificationClickEvent) => void) => {
         // subscribe and return unsubscribe()
         return RNForegroundServiceManager.subscribeNotificationOnPressEvent(eventHandler);
@@ -34,10 +38,11 @@ export function useRNNotification(channelConfigs?: ChannelNotificationConfig[]) 
                         `Notification channel id should be one of ${channelConfigs.map((ch) => ch.channelId).join(',')}`
                     );
                 }
+                const def = defaultNotifications?.[channel.channelId];
                 return {
-                    ...channel.defaultNotification,
+                    ...def,
                     ...notif,
-                    id: notif.id ?? channel.defaultNotification?.id ?? generateRandomNotificationId(),
+                    id: notif.id ?? def?.id ?? generateRandomNotificationId(),
                 };
             } else {
                 return notif.id !== undefined
@@ -48,7 +53,7 @@ export function useRNNotification(channelConfigs?: ChannelNotificationConfig[]) 
                       };
             }
         },
-        [channelConfigs]
+        [channelConfigs, defaultNotifications]
     );
 
     // for non-foreground service notification

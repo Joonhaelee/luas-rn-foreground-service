@@ -1,23 +1,26 @@
-import type { ChannelNotificationConfig } from '@luas/rn-foreground-service';
+import type { RNNotification, RNNotificationChannel } from '@luas/rn-foreground-service';
 
-export const serviceNotificationChannel: ChannelNotificationConfig = {
+export const serviceNotificationChannel: RNNotificationChannel = {
     channelId: 'foregroundService',
     channelName: 'ForegroundService',
     channelDescription: 'ForegroundService description',
-    defaultNotification: {
+};
+
+export const miscNotificationChannel: RNNotificationChannel = {
+    channelId: 'misc',
+    channelName: 'Misc',
+    channelDescription: 'Misc description',
+};
+
+export const defaultNotifications: Record<string, Partial<Omit<RNNotification, 'channelId'>>> = {
+    foregroundService: {
         id: 'rnfs.notification.id',
         serviceType: 'location',
         icon: 'notification_icon',
     },
-};
-
-export const miscNotificationChannel: ChannelNotificationConfig = {
-    channelId: 'misc',
-    channelName: 'Misc',
-    channelDescription: 'Misc description',
-    defaultNotification: {
+    misc: {
         icon: 'notification_icon',
     },
 };
 
-export const notificationChannels: ChannelNotificationConfig[] = [serviceNotificationChannel, miscNotificationChannel];
+export const notificationChannels: RNNotificationChannel[] = [serviceNotificationChannel, miscNotificationChannel];
