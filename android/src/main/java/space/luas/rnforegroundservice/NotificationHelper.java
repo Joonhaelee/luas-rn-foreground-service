@@ -1,5 +1,6 @@
 package space.luas.rnforegroundservice;
 
+import android.app.Service;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -44,8 +45,9 @@ class NotificationHelper {
     public void postNotification(Bundle bundle, Promise promise) {
         try {
             Notification notification = this.buildNotification(bundle);
-            int id = (int) bundle.getDouble("id");
-            this.notificationManager.notify(id, notification);
+            String id = bundle.getString("id");
+            assert id != null : "notification id can not be null";
+            this.notificationManager.notify(id.hashCode(), notification);
             Log.d(TAG, "notification posted. id=" + id);
             promise.resolve(true);
         }
@@ -78,10 +80,37 @@ class NotificationHelper {
 
     }
 
+    /**
+     * notification content click intent
+     * it must open a specific activity and bring then app to the foreground.(PendingIntent.getActivity())
+     * if we want a custom action, we hvae to use addAction(PendingIntent.getBroadcast())
+     * @return PendingIntent
+     */
+    private PendingIntent getDismissIntent(Service service, Bundle bundle) {
+        String id = bundle.getString("id");
+        assert id != null : "notification id can not be null";
+
+        Intent deleteIntent = new Intent(service, ForegroundService.class)
+            .setAction(Constants.ACTION_NOTIFICATION_DISMISSED)
+            .putExtra(Constants.NOTIFICATION_CONFIG, bundle);
+        return PendingIntent.getService(
+            service, id.hashCode(), deleteIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+//        Intent intent = new Intent(context, NotificationEventReceiver.class)
+//            .setAction(NotificationEventReceiver.ACTION_NOTIFICATION_DISMISSED)
+//            .putExtra(Constants.NOTIFICATION_CONFIG, bundle);
+//
+//        return PendingIntent.getBroadcast(context, id.hashCode(), intent,
+//            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
     private void addCustomButton(NotificationCompat.Builder notificationBuilder,
                                    Bundle rootBundle,
                                    String key,
                                    String buttonAction) {
+        String id = rootBundle.getString("id");
+        assert id != null : "notification id can not be null";
         Bundle nestedBundle = rootBundle.getBundle(key);
         if (nestedBundle != null) {
             String label = nestedBundle.getString("label");
@@ -89,7 +118,7 @@ class NotificationHelper {
                 Intent intentReceiver = new Intent(context, NotificationEventReceiver.class)
                     .setAction(buttonAction)
                     // notification id from root bundle
-                    .putExtra("id", (int) rootBundle.getDouble("id"))
+                    .putExtra("id", id)
                     .putExtra("label", label)
                     .putExtra("value", nestedBundle.getString("value", label));
                 // Button intents use FLAG_IMMUTABLE with broadcast
@@ -110,13 +139,25 @@ class NotificationHelper {
         }
     }
 
+    public Notification buildServiceNotification(Service service, Bundle bundle) {
+        NotificationCompat.Builder builder = this.buildNotificationBuilder(bundle);
+        // keep bundle for repost notification if foreground service associated
+        builder.setDeleteIntent(this.getDismissIntent(service, bundle));
+        return builder.build();
+    }
+
+    public Notification buildNotification(Bundle bundle) {
+        NotificationCompat.Builder builder = this.buildNotificationBuilder(bundle);
+        return builder.build();
+    }
+
     /**
      * Build a notification from configuration bundle
      *
      * @param bundle Configuration bundle from React Native
      * @return Configured notification or null if configuration is invalid
      */
-    Notification buildNotification(Bundle bundle) {
+    public NotificationCompat.Builder buildNotificationBuilder(Bundle bundle) {
         if (bundle == null) {
             Log.e(TAG, "buildNotification: invalid config - bundle is null");
             return null;
@@ -129,21 +170,19 @@ class NotificationHelper {
         }
 
         // Parse notification priority
-        String priorityString = bundle.getString("priority", "max");
+        String priorityString = bundle.getString("priority", "default");
         int priority = switch (priorityString.toLowerCase()) {
             case "max" -> NotificationCompat.PRIORITY_MAX;
             case "high" -> NotificationCompat.PRIORITY_HIGH;
             case "low" -> NotificationCompat.PRIORITY_LOW;
             case "min" -> NotificationCompat.PRIORITY_MIN;
-            case "default" -> NotificationCompat.PRIORITY_DEFAULT;
-            default -> NotificationCompat.PRIORITY_MAX;
+            default -> NotificationCompat.PRIORITY_DEFAULT;
         };
 
         // Parse notification visibility
         String visibilityString = bundle.getString("visibility", "public");
         int visibility = switch (visibilityString.toLowerCase()) {
             case "private" -> NotificationCompat.VISIBILITY_PRIVATE;
-            case "public" -> NotificationCompat.VISIBILITY_PUBLIC;
             case "secret" -> NotificationCompat.VISIBILITY_SECRET;
             default -> NotificationCompat.VISIBILITY_PUBLIC;
         };
@@ -185,7 +224,8 @@ class NotificationHelper {
                         .setOnlyAlertOnce(setOnlyAlertOnce)
                         .setAutoCancel(autoCancel)
                         .setOngoing(ongoing)
-                        .setContentIntent(this.getContentClickIntent());
+                        .setContentIntent(this.getContentClickIntent())
+                    ;
 
         // Large icon. right side of notification
         String largeIconName = bundle.getString("largeIcon");
@@ -213,13 +253,20 @@ class NotificationHelper {
             notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(longBody));
         }
         // button1, button2
-        this.addCustomButton(notificationBuilder, bundle, "button1", NotificationEventReceiver.ACTION_NOTIFICATION_BUTTON1);
-        this.addCustomButton(notificationBuilder, bundle, "button2", NotificationEventReceiver.ACTION_NOTIFICATION_BUTTON2);
+        this.addCustomButton(notificationBuilder, bundle, "button1", Constants.ACTION_NOTIFICATION_BUTTON1);
+        this.addCustomButton(notificationBuilder, bundle, "button2", Constants.ACTION_NOTIFICATION_BUTTON2);
         // Progress bar
         this.addCustomProgress(notificationBuilder, bundle);
+        // auto dismiss notification
+        long timeoutAfter = (long) bundle.getDouble("timeoutAfter", 0);
+        if (timeoutAfter > 0) {
+            notificationBuilder.setTimeoutAfter(timeoutAfter);
+        }
         // --- end build notification
 
-        return notificationBuilder.build();
+        return notificationBuilder;
+
+
     }
 
     /**

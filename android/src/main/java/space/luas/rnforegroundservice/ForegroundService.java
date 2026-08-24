@@ -18,6 +18,8 @@ import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -37,7 +39,12 @@ public class ForegroundService extends Service {
 
     private static final String TAG = "ForegroundService";
     private static boolean isRunning = false;
-    public static boolean getIsRunning() { return isRunning; }
+    public static boolean getIsRunning() {
+        return isRunning;
+    }
+    private String primaryNotificationId = null;
+    private final List<String> additionalNotificationIds = new ArrayList<>();
+
     private Handler handler;
     private Context context;
     private Runnable runnableCode;
@@ -48,21 +55,21 @@ public class ForegroundService extends Service {
         super.onCreate();
         context = this;
         handler = new Handler(Looper.getMainLooper());
-        Log.d(TAG, "onCreate called");
+        Log.d(TAG, "ForegroundService created");
     }
 
     @Override
     public void onDestroy() {
         if (ForegroundService.isRunning) {
-            handleStopService();
+            doStopService();
         }
-        Log.d(TAG, "onDestroy called");
+        Log.d(TAG, "ForegroundService destroyed");
         super.onDestroy();
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        Log.d(TAG, "onTaskRemoved called");
+        Log.d(TAG, "ForegroundService onTaskRemoved() called");
         super.onTaskRemoved(rootIntent);
     }
 
@@ -74,7 +81,7 @@ public class ForegroundService extends Service {
     /**
      * when context.startForegroundService() called, onStartCommand() invoked.
      * and, we have to call startForeground() in 5 seconds
-     * when context.startService() called, onStartCommand() invoked.
+     * also when context.startService() called, onStartCommand() invoked.
      * Android Service is singleton itself.
      * so multiple call of startService() will NOT create instance, just onStartCommand() invoked
      *
@@ -94,16 +101,19 @@ public class ForegroundService extends Service {
 
         switch (action) {
             case Constants.ACTION_FOREGROUND_SERVICE_START:
-                handleStartService(intent);
+                doStartService(intent);
                 break;
             case Constants.ACTION_FOREGROUND_SERVICE_STOP:
-                handleStopService();
+                doStopService();
                 break;
             case Constants.ACTION_UPDATE_NOTIFICATION:
-                handleUpdateNotification(intent);
+                doUpdateNotification(intent);
                 break;
             case Constants.ACTION_RUN_HEADLESS_TASK:
-                handleRunHeadlessTask(intent);
+                doRunHeadlessTask(intent);
+                break;
+            case Constants.ACTION_NOTIFICATION_DISMISSED:
+                doRepostNotification(intent);
                 break;
             default:
                 Log.w(TAG, "Unknown action: " + action);
@@ -119,48 +129,81 @@ public class ForegroundService extends Service {
      *
      * @param notificationConfig Bundle containing notification configuration
      */
-    private void runStartForeground(Bundle notificationConfig) {
-        try {
-            int id = (int) notificationConfig.getDouble("id");
-            NotificationHelper helper = new NotificationHelper(context);
-            Notification notification = helper
-                .buildNotification(notificationConfig);
-
-            if (notification == null) {
-                Log.e(TAG, "Failed to build notification");
-                return;
-            }
-
-            // Android 14+ requires explicit service type
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                String serviceType = notificationConfig.getString("serviceType", "dataSync");
-                int serviceTypeFlag = ServiceTypeManager.getServiceTypeFlag(serviceType);
-                Log.d(TAG, String.format(
-                    "Starting foreground service with type: %s (flag: %d)",
-                    serviceType, serviceTypeFlag
-                ));
-                startForeground(id, notification, serviceTypeFlag);
-            } else {
-                startForeground(id, notification);
-            }
-
-            ForegroundService.isRunning = true;
-            sendServiceStateChangeEventToReactNative();
-            Log.d(TAG, "Foreground service started successfully.");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to start foreground service", e);
-        }
-    }
+//    private void runStartForeground(Bundle notificationConfig) {
+//        try {
+//            String id = notificationConfig.getString("id");
+//            assert id != null : "notification id can not be null";
+//
+//            NotificationHelper helper = new NotificationHelper(context);
+//            Notification notification = helper
+//                .buildNotification(notificationConfig);
+//
+//            if (notification == null) {
+//                Log.e(TAG, "Failed to build notification");
+//                return;
+//            }
+//
+//            // Android 14+ requires explicit service type
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+//                String serviceType = notificationConfig.getString("serviceType", "dataSync");
+//                int serviceTypeFlag = ServiceTypeManager.getServiceTypeFlag(serviceType);
+//                Log.d(TAG, String.format(
+//                    "Starting foreground service with type: %s (flag: %d)",
+//                    serviceType, serviceTypeFlag
+//                ));
+//                startForeground(id.hashCode(), notification, serviceTypeFlag);
+//            } else {
+//                startForeground(id.hashCode(), notification);
+//            }
+//
+//            ForegroundService.isRunning = true;
+//            sendServiceStateChangeEventToReactNative();
+//            Log.d(TAG, "Foreground service started successfully.");
+//        } catch (Exception e) {
+//            Log.e(TAG, "Failed to start foreground service", e);
+//        }
+//    }
 
 
     /**
      * Handle ACTION_FOREGROUND_SERVICE_START
      */
-    private void handleStartService(Intent intent) {
+    private void doStartService(Intent intent) {
         if (intent.getExtras() != null && intent.getExtras().containsKey(Constants.NOTIFICATION_CONFIG)) {
             Bundle notificationConfig = intent.getExtras().getBundle(Constants.NOTIFICATION_CONFIG);
             if (notificationConfig != null) {
-                runStartForeground(notificationConfig);
+                try {
+                    String id = notificationConfig.getString("id");
+                    assert id != null : "notification id can not be null";
+                    NotificationHelper helper = new NotificationHelper(context);
+                    Notification notification = helper
+                        .buildServiceNotification(this, notificationConfig);
+
+                    if (notification == null) {
+                        Log.e(TAG, "Failed to build notification");
+                        return;
+                    }
+
+                    // Android 14+ requires explicit service type
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        String serviceType = notificationConfig.getString("serviceType", "dataSync");
+                        int serviceTypeFlag = ServiceTypeManager.getServiceTypeFlag(serviceType);
+                        Log.d(TAG, String.format(
+                            "Starting foreground service with type: %s (flag: %d)",
+                            serviceType, serviceTypeFlag
+                        ));
+                        startForeground(id.hashCode(), notification, serviceTypeFlag);
+                    } else {
+                        startForeground(id.hashCode(), notification);
+                    }
+                    primaryNotificationId = id;
+                    ForegroundService.isRunning = true;
+                    sendServiceStateChangeEventToReactNative();
+                    Log.d(TAG, "Foreground service started successfully.");
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to start foreground service", e);
+                }
+
             }
         }
     }
@@ -168,18 +211,34 @@ public class ForegroundService extends Service {
     /**
      * Handle ACTION_FOREGROUND_SERVICE_STOP
      */
-    private void handleStopService() {
+    private void doStopService() {
         Log.d(TAG, "Force stopping foreground service");
+        cancelAdditionalNotifications();
+        stopForeground(STOP_FOREGROUND_REMOVE);
+        primaryNotificationId = null;
         cleanupResources();
         ForegroundService.isRunning = false;
         sendServiceStateChangeEventToReactNative();
         stopSelf();
     }
 
+    private void cancelAdditionalNotifications() {
+        if (!additionalNotificationIds.isEmpty()) {
+            NotificationManager notificationManager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notificationManager != null) {
+                for (String id : additionalNotificationIds) {
+                    notificationManager.cancel(id.hashCode());
+                }
+                Log.d(TAG, "Additional notifications cleared");
+            }
+        }
+    }
+
     /**
      * Handle ACTION_UPDATE_NOTIFICATION
      */
-    private void handleUpdateNotification(Intent intent) {
+    private void doUpdateNotification(Intent intent) {
         if (intent.getExtras() == null || !intent.getExtras().containsKey(Constants.NOTIFICATION_CONFIG)) {
             return;
         }
@@ -195,15 +254,19 @@ public class ForegroundService extends Service {
             // runStartForeground(notificationConfig);
         }
         try {
-            int id = (int) notificationConfig.getDouble("id");
+            String id = notificationConfig.getString("id");
+            assert id != null : "notification id can not be null";
             Notification notification = new NotificationHelper(context)
-                .buildNotification(notificationConfig);
+                .buildServiceNotification(this, notificationConfig);
 
             if (notification != null) {
-                NotificationManager mNotificationManager =
+                NotificationManager notificationManager =
                     (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                if (mNotificationManager != null) {
-                    mNotificationManager.notify(id, notification);
+                if (notificationManager != null) {
+                    notificationManager.notify(id.hashCode(), notification);
+                    if (!id.equals(primaryNotificationId)) {
+                        additionalNotificationIds.add(id);
+                    }
                     Log.d(TAG, "Notification updated successfully");
                 }
             }
@@ -213,44 +276,84 @@ public class ForegroundService extends Service {
 
     }
 
+    private void doRepostNotification(Intent intent) {
+        if (intent.getExtras() == null || !intent.getExtras().containsKey(Constants.NOTIFICATION_CONFIG)) {
+            return;
+        }
+        Bundle notificationConfig = intent.getExtras().getBundle(Constants.NOTIFICATION_CONFIG);
+        if (notificationConfig == null) {
+            return;
+        }
+        if (!ForegroundService.isRunning) {
+            Log.w(TAG, "doRepostNotification(). can not update notification. service is not running");
+            return;
+        }
+        try {
+            String id = notificationConfig.getString("id");
+            if (id != null && id.equals(primaryNotificationId)) {
+                Notification notification = new NotificationHelper(context)
+                    .buildServiceNotification(this, notificationConfig);
+
+                if (notification != null) {
+                    // Android 14+ requires explicit service type
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        String serviceType = notificationConfig.getString("serviceType", "dataSync");
+                        int serviceTypeFlag = ServiceTypeManager.getServiceTypeFlag(serviceType);
+                        Log.d(TAG, String.format(
+                            "doRepostNotification(). calling startForeground() again with type: %s (flag: %d)",
+                            serviceType, serviceTypeFlag
+                        ));
+                        startForeground(id.hashCode(), notification, serviceTypeFlag);
+                    } else {
+                        startForeground(id.hashCode(), notification);
+                    }
+//
+//                    NotificationManager notificationManager =
+//                        (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+//                    if (notificationManager != null) {
+//                        notificationManager.notify(id.hashCode(), notification);
+//                        Log.d(TAG, "Notification reposted successfully");
+//                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to repost notification", e);
+        }
+    }
+
+
     /**
      * Handle ACTION_RUN_HEADLESS_TASK
      */
-    private void handleRunHeadlessTask(Intent intent) {
+    private void doRunHeadlessTask(Intent intent) {
         if (intent.getExtras() == null || !intent.getExtras().containsKey(Constants.HEADLESS_TASK_CONFIG)) {
-            Log.w(TAG, "Run task called without task config");
+            Log.w(TAG, "handleRunHeadlessTask(). intent extra has not task config");
             return;
         }
-        // Try to restart service if it was killed
         if (!ForegroundService.isRunning) {
-            Log.w(TAG, "Can not run task. service is not running");
+            Log.w(TAG, "handleRunHeadlessTask(). Foreground service is not running");
             return;
         }
         taskConfig = intent.getExtras().getBundle(Constants.HEADLESS_TASK_CONFIG);
         if (taskConfig == null) {
-            Log.w(TAG, "Task config bundle is null");
+            Log.w(TAG, "handleRunHeadlessTask(). task config is null");
             return;
         }
-        Log.d(TAG, "starting handleRunTask()...");
-
         try {
-            boolean onLoop = taskConfig.getBoolean("onLoop", false);
-            int loopDelay = (int) taskConfig.getDouble("loopDelay", 5000);
-
-            if (onLoop) {
-                // Start looping task runner
-                initializeRepeatableTaskRunner();
-                if (runnableCode != null) {
-                    handler.postDelayed(runnableCode, loopDelay);
-                    Log.d(TAG, "Started looping task runner");
-                }
-            } else {
-                // Execute one-time task
-                runOneTimeHeadlessTask(taskConfig);
-                Log.d(TAG, "Executed one-time headless task");
+            int firstInterval = (int) taskConfig.getDouble("firstInterval", 0);
+            int interval = firstInterval > 0 ? firstInterval : (int) taskConfig.getDouble("interval",  Constants.HEADLESS_TASK_DEFAULT_INTERVAL);
+            // Start looping task runner
+            createRunnableCodeForHeadlessTaskLoop();
+            if (runnableCode != null) {
+                // post the first loop
+                handler.postDelayed(runnableCode, interval);
+                Log.d(TAG, "handleRunHeadlessTask(). runnable looper started for headlessTaskService. first interval=" + interval);
+            }
+            else {
+                Log.w(TAG, "handleRunHeadlessTask(). runnableCode was not created");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to start task", e);
+            Log.e(TAG, "handleRunHeadlessTask(). error", e);
         }
     }
 
@@ -273,61 +376,28 @@ public class ForegroundService extends Service {
     /**
      * Initialize the looping task runner
      */
-    private void initializeRepeatableTaskRunner() {
+    private void createRunnableCodeForHeadlessTaskLoop() {
         runnableCode = new Runnable() {
             @Override
             public void run() {
                 if (!ForegroundService.isRunning) {
-                    Log.d(TAG, "Task runner stopped - service not running");
+                    Log.d(TAG, "RunnableCode: headless task looper stopped. service not running");
                     return;
                 }
                 try {
-                    final Intent service = new Intent(context, ForegroundServiceHeadlessTask.class);
-                    service.putExtras(taskConfig);
-                    context.startService(service);
+                    final Intent headlessServiceIntent = new Intent(context, HeadlessTaskService.class);
+                    headlessServiceIntent.putExtras(taskConfig);
+                    context.startService(headlessServiceIntent);
 
-                    // as default, js pass loopDelay to 1000
-                    int loopDelay = (int) taskConfig.getDouble("loopDelay", 5000);
-                    handler.postDelayed(this, loopDelay);
-                    Log.d(TAG, "Repeatable task runner posted delayed loop");
+                    // as default, js pass interval to 10000
+                    int interval = (int) taskConfig.getDouble("interval", Constants.HEADLESS_TASK_DEFAULT_INTERVAL);
+                    handler.postDelayed(this, interval);
+                    Log.d(TAG, "RunnableCode: headless task looper posted. interval=" + interval);
                 } catch (Exception e) {
-                    Log.e(TAG, "Error in task runner", e);
+                    Log.e(TAG, "RunnableCode: error", e);
                 }
             }
         };
-    }
-
-    /**
-     * Run a one-time headless task with optional delay
-     *
-     * @param bundle Task configuration bundle
-     */
-    private void runOneTimeHeadlessTask(Bundle bundle) {
-        final Intent service = new Intent(context, ForegroundServiceHeadlessTask.class);
-        service.putExtras(bundle);
-
-        int delay = (int) bundle.getDouble("delay", 0);
-
-        if (delay <= 0) {
-            // Execute immediately
-            context.startService(service);
-        } else {
-            // Execute after delay
-            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (!ForegroundService.isRunning) {
-                        Log.d(TAG, "Service stopped before delayed task could execute");
-                        return;
-                    }
-                    try {
-                        context.startService(service);
-                    } catch (Exception e) {
-                        Log.e(TAG, "Failed to start delayed headless task", e);
-                    }
-                }
-            }, delay);
-        }
     }
 
     /**
@@ -344,7 +414,7 @@ public class ForegroundService extends Service {
                 reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                     .emit("onServiceStateChanged", eventData);
                 // on turbo module, WritableMap can be serialized only once and deallocated from memory.
-                // so, we can not access eventData any more
+                // so, we can not access eventData anymore
                 Log.d(TAG, "Service state event sent to React Native");
             } else {
                 Log.w(TAG, "React Native context not available, Service state event not sent");

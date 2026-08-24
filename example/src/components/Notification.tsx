@@ -4,14 +4,15 @@ import { useRNNotification } from '@luas/rn-foreground-service';
 import { miscNotificationChannel, notificationChannels } from '../notificationConfig';
 
 export function Notification() {
-    const [latestNotificationId, setLatestNotificationId] = React.useState<number | undefined>(undefined);
-    const { addOnNotificationPress, postNotification, cancelNotification, cancelAllNotifications } =
+    const [latestNotificationId, setLatestNotificationId] = React.useState<string | undefined>(undefined);
+    const { subscribeNotificationOnPress, postNotification, cancelNotification, cancelAllNotifications } =
         useRNNotification(notificationChannels);
 
     React.useEffect(() => {
-        return addOnNotificationPress(async (e) => {
+        return subscribeNotificationOnPress(async (e) => {
             if (e.id !== undefined) {
                 try {
+                    console.log('notification pressed', e);
                     await cancelNotification(e.id);
                     // eslint-disable-next-line no-catch-shadow, @typescript-eslint/no-shadow
                 } catch (e: any) {
@@ -19,7 +20,7 @@ export function Notification() {
                 }
             }
         });
-    }, [addOnNotificationPress, cancelNotification]);
+    }, [subscribeNotificationOnPress, cancelNotification]);
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
@@ -100,19 +101,20 @@ Notification message Notification message Notification message Notification mess
                 onPress={async () => {
                     const message = `${new Date().toISOString()} Notification message`;
                     try {
-                        await postNotification({
+                        const id = await postNotification({
                             channelId: miscNotificationChannel.channelId,
                             title: '(button) Notification',
                             body: message,
                             button1: {
                                 label: 'button100',
-                                value: 'button100Value',
+                                value: 'button100-Value',
                             },
                             button2: {
                                 label: 'button101',
-                                value: 'button101Value',
+                                value: 'button101-Value',
                             },
                         });
+                        setLatestNotificationId(id);
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
                     }
@@ -125,7 +127,7 @@ Notification message Notification message Notification message Notification mess
                 onPress={async () => {
                     const message = `${new Date().toISOString()} Notification message`;
                     try {
-                        await postNotification({
+                        const id = await postNotification({
                             channelId: miscNotificationChannel.channelId,
                             title: '(largeIcon) Notification',
                             body: message,
@@ -137,6 +139,7 @@ Notification message Notification message Notification message Notification mess
                                 curr: 50,
                             },
                         });
+                        setLatestNotificationId(id);
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
                     }
@@ -144,6 +147,59 @@ Notification message Notification message Notification message Notification mess
                 style={styles.button}
             >
                 <Text style={styles.buttonText}>Notification with progress</Text>
+            </Pressable>
+            <Pressable
+                onPress={async () => {
+                    if (latestNotificationId === undefined) {
+                        Alert.alert('no previous notification');
+                    } else {
+                        const message = `${new Date().toISOString()} Notification message`;
+                        try {
+                            const id = await postNotification({
+                                id: latestNotificationId,
+                                channelId: miscNotificationChannel.channelId,
+                                title: '(largeIcon) Notification',
+                                body: message,
+                                largeIcon: 'ic_launcher',
+                                ongoing: true,
+                                autoCancel: false,
+                                progress: {
+                                    max: 100,
+                                    curr: 75,
+                                },
+                            });
+                            setLatestNotificationId(id);
+                        } catch (e: any) {
+                            Alert.alert('error. ' + e.message);
+                        }
+                    }
+                }}
+                style={styles.button}
+            >
+                <Text style={styles.buttonText}>Update notification progress</Text>
+            </Pressable>
+            <Pressable
+                onPress={async () => {
+                    const message = `${new Date().toISOString()} Notification message`;
+                    try {
+                        const id = await postNotification({
+                            id: latestNotificationId,
+                            channelId: miscNotificationChannel.channelId,
+                            title: 'Auto dismiss Notification',
+                            body: message,
+                            largeIcon: 'ic_launcher',
+                            ongoing: false,
+                            autoCancel: false,
+                            timeoutAfter: 5000,
+                        });
+                        setLatestNotificationId(id);
+                    } catch (e: any) {
+                        Alert.alert('error. ' + e.message);
+                    }
+                }}
+                style={styles.button}
+            >
+                <Text style={styles.buttonText}>notification and dismiss it 5 seconds after</Text>
             </Pressable>
             <Pressable
                 onPress={async () => {
@@ -159,6 +215,7 @@ Notification message Notification message Notification message Notification mess
             <Pressable
                 onPress={async () => {
                     await cancelAllNotifications();
+                    setLatestNotificationId(undefined);
                 }}
                 style={[styles.button, styles.cancelButton]}
             >

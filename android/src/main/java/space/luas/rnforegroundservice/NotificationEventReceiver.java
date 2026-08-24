@@ -21,10 +21,6 @@ import java.util.Objects;
  */
 public class NotificationEventReceiver extends BroadcastReceiver {
     private static final String TAG = "NotificationEventReceiver";
-    public static final String ACTION_NOTIFICATION_BUTTON1 =
-        "rnforegroundservice.NOTIFICATION_BUTTON1";
-    public static final String ACTION_NOTIFICATION_BUTTON2 =
-        "rnforegroundservice.NOTIFICATION_BUTTON2";
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null || intent.getAction() == null) {
@@ -33,13 +29,16 @@ public class NotificationEventReceiver extends BroadcastReceiver {
 
         String action = intent.getAction();
         Log.d(TAG, "Notification event received: " + action);
-
         try {
-            WritableMap eventData = Arguments.createMap();
-            if (ACTION_NOTIFICATION_BUTTON1.equals(action) || ACTION_NOTIFICATION_BUTTON2.equals(action)) {
-                int id = intent.getIntExtra("id", -1);
-                if (id >= 0) {
-                    eventData.putInt("id", id);
+//            if (Constants.ACTION_NOTIFICATION_DISMISSED.equals(action)) {
+//                ForegroundService.repostIfActive(context, intent);
+//            }
+//            else
+            if (Constants.ACTION_NOTIFICATION_BUTTON1.equals(action) || Constants.ACTION_NOTIFICATION_BUTTON2.equals(action)) {
+                WritableMap eventData = Arguments.createMap();
+                String id = intent.getStringExtra("id");
+                if (id != null) {
+                    eventData.putString("id", id);
                 }
                 eventData.putString("label", intent.getStringExtra("label"));
                 eventData.putString("value", intent.getStringExtra("value"));
@@ -63,7 +62,7 @@ public class NotificationEventReceiver extends BroadcastReceiver {
                 reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                         .emit("onNotificationPress", eventData);
                 // on turbo module, WritableMap can be serialized only once and deallocated from memory.
-                // so, we can not access eventData any more
+                // so, we can not access eventData anymore
                 Log.d(TAG, "Event sent to React Native");
             } else {
                 Log.w(TAG, "React Native context not available, event not sent");

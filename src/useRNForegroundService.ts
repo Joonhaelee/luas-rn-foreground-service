@@ -1,8 +1,8 @@
 import React from 'react';
-import { RNForegroundServiceManager } from './RNForegroundServiceManager';
+import { generateRandomNotificationId, RNForegroundServiceManager } from './RNForegroundServiceManager';
 import type {
     RNNotification,
-    RNSimpleNotif,
+    RNBaseNotif,
     NotificationClickEvent,
     ChannelNotificationConfig,
     TaskRunner,
@@ -34,30 +34,30 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
     /**
      * add notification onPress callback.
      */
-    const addOnNotificationPress = React.useCallback((eventHandler: (e: NotificationClickEvent) => void) => {
+    const subscribeNotificationOnPress = React.useCallback((eventHandler: (e: NotificationClickEvent) => void) => {
         // subscribe and return unsubscribe()
-        return RNForegroundServiceManager.addNotificationPressEventListener(eventHandler);
+        return RNForegroundServiceManager.subscribeNotificationOnPressEvent(eventHandler);
     }, []);
 
     /**
      * every notifcation has it own id.
      * if id not provided, hook will generate unique id
      */
-    const notificationSeq = React.useRef<number>(0);
+    // const notificationSeq = React.useRef<number>(0);
 
     /**
      * Generate a sequential notification id.
      * @private
      * @returns number. may be unique in every month range
      */
-    const generateNotificationId = React.useCallback(() => {
-        notificationSeq.current = notificationSeq.current + 1;
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        // get the total minutes from start of the month
-        const minutes = Math.floor((now.getTime() - startOfMonth.getTime()) / (1000 * 60));
-        return minutes + notificationSeq.current;
-    }, []);
+    // const generateNotificationId = React.useCallback(() => {
+    //     notificationSeq.current = notificationSeq.current + 1;
+    //     const now = new Date();
+    //     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    //     // get the total minutes from start of the month
+    //     const minutes = Math.floor((now.getTime() - startOfMonth.getTime()) / (1000 * 60));
+    //     return minutes + notificationSeq.current;
+    // }, []);
 
     /**
      * Generate a notification object for native side.
@@ -68,7 +68,7 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
      * @returns RNNotification.
      */
     const buildNotification = React.useCallback(
-        (notif: RNSimpleNotif): RNNotification => {
+        (notif: RNBaseNotif): RNNotification => {
             if (channelConfigs?.length) {
                 const channel = channelConfigs.find((ch) => ch.channelId === notif.channelId);
                 if (!channel) {
@@ -79,27 +79,27 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
                 return {
                     ...channel.defaultNotification,
                     ...notif,
-                    id: notif.id ?? channel.defaultNotification?.id ?? generateNotificationId(),
+                    id: notif.id ?? channel.defaultNotification?.id ?? generateRandomNotificationId(),
                 };
             } else {
                 return notif.id !== undefined
                     ? notif
                     : {
                           ...notif,
-                          id: generateNotificationId(),
+                          id: generateRandomNotificationId(),
                       };
             }
         },
-        [channelConfigs, generateNotificationId]
+        [channelConfigs]
     );
 
     /** Start foreground service
      * before starting service, notification channel must be registered
      */
     const startService = React.useCallback(
-        async (notif: RNNotification, taskInterval?: number): Promise<number | undefined> => {
+        async (runner: TaskRunner, options: TaskOptions, notif: RNNotification): Promise<string | undefined> => {
             const notification = buildNotification(notif);
-            const id = await RNForegroundServiceManager.startService(notification, taskInterval);
+            const id = await RNForegroundServiceManager.startService(runner, options, notification);
             return id;
         },
         [buildNotification]
@@ -112,7 +112,7 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
     /** Update notification which associated with foreground service
      */
     const updateServiceNotification = React.useCallback(
-        async (notif: RNNotification): Promise<number> => {
+        async (notif: RNNotification): Promise<string> => {
             const notification = buildNotification(notif);
             const id = await RNForegroundServiceManager.updateServiceNotification(notification);
             return id;
@@ -120,7 +120,7 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
         [buildNotification]
     );
 
-    const cancelNotification = React.useCallback(async (id: number) => {
+    const cancelNotification = React.useCallback(async (id: string) => {
         await RNForegroundServiceManager.cancelNotification(id);
     }, []);
 
@@ -128,27 +128,13 @@ export function useRNForegroundService(channelConfigs?: ChannelNotificationConfi
         await RNForegroundServiceManager.cancelAllNotifications();
     }, []);
 
-    /** add periodic or onetime task */
-    const addTask = React.useCallback((runner: TaskRunner, options: TaskOptions = {}) => {
-        return RNForegroundServiceManager.addTask(runner, options);
-    }, []);
-    const removeTask = React.useCallback((taskId: string) => {
-        RNForegroundServiceManager.removeTask(taskId);
-    }, []);
-    const removeAllTasks = React.useCallback(() => {
-        RNForegroundServiceManager.clearTasks();
-    }, []);
-
     return {
         isRunning,
-        addOnNotificationPress,
+        subscribeNotificationOnPress,
         startService,
         stopService,
         updateServiceNotification,
         cancelNotification,
         cancelAllNotifications,
-        addTask,
-        removeTask,
-        removeAllTasks,
     };
 }

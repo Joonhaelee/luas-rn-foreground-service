@@ -1,6 +1,6 @@
-import type { RNNotificationChannel, RNNotification } from './NativeRNForegroundService';
+import type { RNNotificationChannel, RNNotification, RNHeadlessTaskConfig } from './NativeRNForegroundService';
 
-export type { RNNotificationChannel, RNNotification, RNSimpleNotif } from './NativeRNForegroundService';
+export type { RNNotificationChannel, RNNotification, RNBaseNotif } from './NativeRNForegroundService';
 
 /**
  * Service types for Android 14+ foreground services. 'dataSync' | 'location' | 'mediaPlayback';
@@ -22,34 +22,11 @@ export type NotificationVisibility = RNNotification['visibility'];
 export type NotificationPriority = RNNotification['priority'];
 
 /**
- * Task configuration options
+ * Headless Task configuration options
  */
-export interface TaskOptions {
-    /**
-     * interval as milliseconds
-     * @default 10000
-     */
-    // interval?: number;
-    /**
-     * Whether task should repeat
-     * @default true
-     */
-    repeat?: boolean;
-    /**
-     * Unique task identifier
-     * @default auto-generated
-     */
-    taskId?: string;
-    taskName?: string;
+export interface TaskOptions extends RNHeadlessTaskConfig {
+    // taskId, taskName, interval, firstInterval, timeout defined at RNHeadlessTaskConfig
     taskParam?: Record<string, string> | string;
-    /**
-     * Callback called when task completes successfully
-     */
-    onSuccess?: () => void;
-    /**
-     * Callback called when task encounters an error
-     */
-    onError?: (error: Error) => void;
     // task caller to tell if runner called by foreground service or other process
     caller?: string;
 }
@@ -84,7 +61,7 @@ export interface NotificationClickEvent {
     /** notification id
      * if you want to clear notification on press callback(), call cancelNotification with id
      */
-    id?: number;
+    id?: string;
     /**
      * the label of pressed
      */

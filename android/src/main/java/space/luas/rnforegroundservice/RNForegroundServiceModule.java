@@ -148,30 +148,32 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
     public void startService(ReadableMap notificationConfig, Promise promise) {
         // Validate configuration
         if (!validateParams(notificationConfig, true, promise)) {
-            return;
+            Log.w(TAG, "startService(). invalid parameter");
+            promise.reject(Constants.ERROR_INVALID_CONFIG, "invalid parameter");
         }
-        if (ForegroundService.getIsRunning()) {
-            Log.w(TAG, "startService -> service is already running. will just post notification");
+        else if (ForegroundService.getIsRunning()) {
+            Log.w(TAG, "startService(). service is already running. will just post notification");
             this.updateServiceNotification(notificationConfig, promise);
-            return;
-        }
-        try {
-            Intent intent = new Intent(reactContext, ForegroundService.class);
-            intent.setAction(Constants.ACTION_FOREGROUND_SERVICE_START);
-            intent.putExtra(Constants.NOTIFICATION_CONFIG, Arguments.toBundle(notificationConfig));
-            reactContext.startForegroundService(intent);
             promise.resolve(null);
-            Log.d(TAG, "startService -> context.startForegroundService() called");
-        } catch (IllegalStateException | SecurityException e) {
-            promise.reject(Constants.ERROR_SERVICE_ERROR,
-                    "Failed to start foreground service: " + e.getMessage(), e);
+        }
+        else {
+            try {
+                Log.d(TAG, "startService(). calling context.startForegroundService()");
+                Intent intent = new Intent(reactContext, ForegroundService.class);
+                intent.setAction(Constants.ACTION_FOREGROUND_SERVICE_START);
+                intent.putExtra(Constants.NOTIFICATION_CONFIG, Arguments.toBundle(notificationConfig));
+                reactContext.startForegroundService(intent);
+                promise.resolve(null);
+            } catch (IllegalStateException | SecurityException e) {
+                Log.e(TAG, "startService() error. " + e.getMessage());
+                promise.reject(Constants.ERROR_SERVICE_ERROR,
+                        "Failed to start foreground service: " + e.getMessage(), e);
+            }
         }
     }
 
     /**
      * Stop the foreground service (decrements internal counter)
-     *
-     * @return boolean
      */
     @ReactMethod
     public void stopService(Promise promise) {
@@ -269,35 +271,39 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
     }
 
     /**
-     * Run a headless task
-     *
+     * headless task executor
+     * delegate run headless task to ForegroundService.java
      * @param taskConfig Task configuration from JavaScript
      * @param promise Promise to resolve/reject
      */
     @ReactMethod
     public void runHeadlessTask(ReadableMap taskConfig, Promise promise) {
-        if (!taskConfig.hasKey("taskName")) {
-            promise.reject(Constants.ERROR_INVALID_CONFIG, "taskName is required");
+        if (!taskConfig.hasKey("headlessTaskKey")) {
+            promise.reject(Constants.ERROR_INVALID_CONFIG, "headlessTaskKey is required");
             return;
         }
-
-        if (!taskConfig.hasKey("delay")) {
-            promise.reject(Constants.ERROR_INVALID_CONFIG, "delay is required");
+        if (!taskConfig.hasKey("interval")) {
+            promise.reject(Constants.ERROR_INVALID_CONFIG, "interval is required");
             return;
         }
-        Log.d(TAG, "starting runHeadlessTask()...");
-
+        int interval = (int) taskConfig.getDouble("interval");
+        if (interval < 5000) {
+            promise.reject(Constants.ERROR_INVALID_CONFIG, "headless task interval must be greater than 5000");
+            return;
+        }
         try {
             Intent intent = new Intent(reactContext, ForegroundService.class);
             intent.setAction(Constants.ACTION_RUN_HEADLESS_TASK);
             intent.putExtra(Constants.HEADLESS_TASK_CONFIG, Arguments.toBundle(taskConfig));
-
+            // start service HeadlessTaskService
+            // this will invoke the function registered by AppRegistry.registerHeadlessTask()
             ComponentName componentName = reactContext.startService(intent);
             if (componentName != null) {
+                Log.d(TAG, "starting the service HeadlessTaskService...");
                 promise.resolve(null);
             } else {
                 promise.reject(Constants.ERROR_SERVICE_ERROR,
-                        "Failed to run task: Service did not start");
+                        "Failed to start service HeadlessTaskService. service not found");
             }
         } catch (IllegalStateException | SecurityException e) {
             promise.reject(Constants.ERROR_SERVICE_ERROR, "Failed to run task: " + e.getMessage(),
@@ -312,15 +318,15 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
      * @param promise Promise to resolve/reject
      */
     @ReactMethod
-    public void cancelNotification(double id, Promise promise) {
+    public void cancelNotification(String id, Promise promise) {
         try {
-            int notificationId = (int) id;
+            int hashCode = id.hashCode();
             android.app.NotificationManager mNotificationManager =
                     (android.app.NotificationManager) reactContext
                             .getSystemService(Context.NOTIFICATION_SERVICE);
 
             if (mNotificationManager != null) {
-                mNotificationManager.cancel(notificationId);
+                mNotificationManager.cancel(hashCode);
                 promise.resolve(null);
             } else {
                 promise.reject(Constants.ERROR_SERVICE_ERROR, "Failed to get NotificationManager");

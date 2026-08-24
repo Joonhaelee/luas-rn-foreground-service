@@ -5,7 +5,7 @@ export const serviceNotificationChannel: ChannelNotificationConfig = {
     channelName: 'ForegroundService',
     channelDescription: 'ForegroundService description',
     defaultNotification: {
-        id: 9876,
+        id: 'rnfs.notification.id',
         serviceType: 'location',
         icon: 'notification_icon',
     },

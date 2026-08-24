@@ -1,37 +1,5 @@
 import type { TurboModule } from 'react-native';
 import { TurboModuleRegistry } from 'react-native';
-
-export interface RNSimpleNotif {
-    /** notification unique id
-     * To post notification with ForegroundServiceManager.postNotification() or \n
-     * ForegroundServiceManager.updateServiceNotification(), you MUST provided id on each notification.\n
-     * If you use the useRNNotification hook, \n
-     * you can set the unique id on hook parameter - channelConfigs.\n
-     * or if    hookTo make it simif same id provided, the previous notification will be replaced by new one
-     *
-     */
-    id?: number;
-    channelId: string;
-    title: string;
-    /**
-     * notification body(message)
-     * if notification NOT expanded(default head up)\
-     * - title and message will be shown. longMessage will NOT be shown\n
-     * if notification expanded(pressed right chevron down)
-     * - if longMessage provided, title and longMessage will be shown and message will NOT be shown
-     * - if longMessage NOT provided, title and message will be shown
-     */
-    body: string;
-    /**
-     * notification long message.
-     * if message is long
-     * - title and message will be shown. longMessage will NOT be shown\n
-     * if notification expanded(pressed right chevron down)
-     * - if longMessage provided, title and longMessage will be shown and message will NOT be shown
-     * - if longMessage NOT provided, title and message will be shown
-     */
-    longBody?: string;
-}
 export interface RNNotificationChannel {
     channelId: string;
     channelName: string;
@@ -60,12 +28,38 @@ export interface RNNotificationChannel {
     sound?: boolean;
 }
 
+export interface RNBaseNotif {
+    /** notification unique id: 필수.
+     * if not passed, the unique value will be filled before call native function
+     */
+    id?: string;
+    channelId: string;
+    title: string;
+    /**
+     * notification body(message)
+     * if notification NOT expanded(default head up)\
+     * - title and message will be shown. longMessage will NOT be shown\n
+     * if notification expanded(pressed right chevron down)
+     * - if longMessage provided, title and longMessage will be shown and message will NOT be shown
+     * - if longMessage NOT provided, title and message will be shown
+     */
+    body: string;
+}
+
 /**
  * Notification configuration for foreground service
  */
-export interface RNNotification extends RNSimpleNotif {
+export interface RNNotification extends RNBaseNotif {
     // channelId, id, title, message came from SimpleNotif
-
+    /**
+     * notification long message.
+     * if message is long
+     * - title and message will be shown. longMessage will NOT be shown\n
+     * if notification expanded(pressed right chevron down)
+     * - if longMessage provided, title and longMessage will be shown and message will NOT be shown
+     * - if longMessage NOT provided, title and message will be shown
+     */
+    longBody?: string;
     /**
      * Notification priority
      * channel.importance is applied with high priority.
@@ -139,16 +133,20 @@ export interface RNNotification extends RNSimpleNotif {
      * @default 'dataSync'
      */
     serviceType?: 'dataSync' | 'location' | 'mediaPlayback';
+    /** auto dismiss timout
+     * @default 0
+     */
+    timeoutAfter?: number;
 }
 
-export interface RNTaskConfig {
-    taskName: string;
-    delay: number;
-    loopDelay?: number;
-    onLoop?: boolean;
+export interface RNHeadlessTaskConfig {
+    taskId?: string;
+    taskName?: string;
+    interval: number;
+    firstInterval?: number;
     /**
-     * Task timeout in milliseconds
-     * @default 60000 (60 seconds)
+     * JS Task must be completed in this timeout
+     * @default 8000 (8 seconds)
      */
     timeout?: number;
 }
@@ -266,7 +264,7 @@ export interface Spec extends TurboModule {
      * @note Tasks registered via AppRegistry.registerHeadlessTask must be
      * registered before calling this method
      */
-    runHeadlessTask(config: RNTaskConfig): Promise<void>;
+    runHeadlessTask(config: RNHeadlessTaskConfig & { headlessTaskKey: string }): Promise<void>;
 
     /**
      * Cancel a specific notification by ID
@@ -277,7 +275,7 @@ export interface Spec extends TurboModule {
      * @note Useful for dismissing secondary notifications while keeping
      * the foreground service running
      */
-    cancelNotification(id: number): Promise<void>;
+    cancelNotification(id: string): Promise<void>;
     cancelAllNotifications(): Promise<void>;
 
     /**

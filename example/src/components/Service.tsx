@@ -1,39 +1,35 @@
 import React from 'react';
 import { Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
-import { useRNForegroundService, type TaskInfo } from '@luas/rn-foreground-service';
+import { generateRandomNotificationId, useRNForegroundService, type TaskInfo } from '@luas/rn-foreground-service';
 import { notificationChannels, serviceNotificationChannel } from '../notificationConfig';
 
 export function Service() {
     const {
         isRunning,
-        addOnNotificationPress,
+        subscribeNotificationOnPress,
         startService,
         stopService,
         updateServiceNotification,
-        cancelNotification,
         cancelAllNotifications,
-        addTask,
-        removeAllTasks,
     } = useRNForegroundService(notificationChannels);
-
-    const [tasks, setTasks] = React.useState<Partial<TaskInfo>[]>([]);
+    const [latestNotificationId, setLatestNotificationId] = React.useState<string | undefined>(undefined);
 
     React.useEffect(() => {
-        return addOnNotificationPress(async (e: any) => {
+        return subscribeNotificationOnPress(async (e: any) => {
             if (e.id !== undefined) {
                 try {
-                    await cancelNotification(e.id);
+                    // notificaiton 을 cancel 해도 foreground service 가 중단되지 않습니다.
+                    console.log('notification pressed', e);
                     // eslint-disable-next-line no-catch-shadow, @typescript-eslint/no-shadow
                 } catch (e: any) {
-                    console.log('cancelNotification error', e);
+                    // console.log('cancelNotification error', e);
                 }
             }
         });
-    }, [addOnNotificationPress, cancelNotification]);
+    }, [subscribeNotificationOnPress]);
 
     const taskRunner = React.useCallback((taskInfo: TaskInfo) => {
         console.log(`[${new Date().toISOString()}] taskRunner called`, taskInfo);
-        setTasks((prev) => prev.map((t) => (t.taskId === taskInfo.taskId ? taskInfo : t)));
     }, []);
 
     return (
@@ -43,7 +39,13 @@ export function Service() {
             <Pressable
                 onPress={async () => {
                     try {
-                        await startService(
+                        // if id not provided, the default service notification id used
+                        const id = await startService(
+                            taskRunner,
+                            {
+                                taskName: 'MyTask',
+                                interval: 10000,
+                            },
                             {
                                 channelId: serviceNotificationChannel.channelId,
                                 title: 'Start',
@@ -61,22 +63,23 @@ export function Service() {
                                     max: 100,
                                     curr: 0,
                                 },
-                            },
-                            5000
+                            }
                         );
+                        setLatestNotificationId(id);
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
                     }
                 }}
                 style={[styles.button, styles.buttonBlue]}
             >
-                <Text style={styles.buttonText}>Start foreground service</Text>
+                <Text style={styles.buttonText}>Start foreground service with 10s task</Text>
             </Pressable>
             {/* Update Foreground Service Notification with same notification Id */}
             <Pressable
                 onPress={async () => {
                     try {
                         await updateServiceNotification({
+                            id: latestNotificationId,
                             channelId: serviceNotificationChannel.channelId,
                             title: 'Updated',
                             body: new Date().toISOString(),
@@ -99,19 +102,49 @@ export function Service() {
                 }}
                 style={styles.button}
             >
-                <Text style={styles.buttonText}>{`Update service notification\nwith same id`}</Text>
+                <Text style={styles.buttonText}>{`Update service notification`}</Text>
+            </Pressable>
+            {/* Update Foreground Service Notification with same notification Id and dismiss it 5 seconds after */}
+            <Pressable
+                onPress={async () => {
+                    try {
+                        await updateServiceNotification({
+                            id: latestNotificationId,
+                            channelId: serviceNotificationChannel.channelId,
+                            title: 'Updated Auto Dismiss',
+                            body: new Date().toISOString(),
+                            button1: {
+                                label: 'button10',
+                                value: 'button10Value',
+                            },
+                            button2: {
+                                label: 'button11',
+                                value: 'button11Value',
+                            },
+                            progress: {
+                                max: 100,
+                                curr: 20,
+                            },
+                            timeoutAfter: 5000,
+                        });
+                    } catch (e: any) {
+                        Alert.alert('error. ' + e.message);
+                    }
+                }}
+                style={styles.button}
+            >
+                <Text style={styles.buttonText}>{`Update service notification\nAnd dismiss it 5 seconds after`}</Text>
             </Pressable>
             {/* Update Foreground Service Notification with different notification Id */}
             <Pressable
                 style={styles.button}
                 onPress={async () => {
+                    const id = generateRandomNotificationId();
                     try {
                         await updateServiceNotification({
-                            id:
-                                (serviceNotificationChannel.defaultNotification?.id ?? 0) +
-                                Math.floor(Math.random() * (100000 - 1)),
+                            id,
                             channelId: serviceNotificationChannel.channelId,
-                            title: `ID=${9999} Updated`,
+                            title: `ID=${id} Updated`,
                             body: new Date().toISOString(),
                             button1: {
                                 label: 'button20',
@@ -131,43 +164,10 @@ export function Service() {
                     }
                 }}
             >
-                <Text style={styles.buttonText}>{`Update service notification\nwith different id`}</Text>
+                <Text style={styles.buttonText}>{`Add notification to service\nwith different id`}</Text>
             </Pressable>
             <Text style={styles.text}>Use "React Native DevTools" to see task callback</Text>
-            <Pressable
-                style={styles.button}
-                onPress={async () => {
-                    try {
-                        const taskId = addTask(taskRunner, {
-                            taskName: 'myTask',
-                            taskParam: { param1: 'value1' },
-                            // interval: 5000,
-                            repeat: true,
-                            onSuccess: () => {
-                                console.log(`ForegroundServiceManager.task() onSuccess()`);
-                            },
-                            onError: (error: Error) => {
-                                console.log(`ForegroundServiceManager.task() onError()`, error);
-                            },
-                        });
-                        setTasks((prev) => [...prev, { taskId, tickCount: 0 }]);
-                    } catch (e: any) {
-                        Alert.alert('error. ' + e.message);
-                    }
-                }}
-            >
-                <Text style={styles.buttonText}>Add task (every 5 seconds)</Text>
-            </Pressable>
-            <Text style={styles.text}>{tasks.map((task) => `${task.taskId}:tick=${task.tickCount}`).join(`\n`)}</Text>
-            <Pressable
-                style={styles.button}
-                onPress={async () => {
-                    removeAllTasks();
-                    setTasks([]);
-                }}
-            >
-                <Text style={styles.buttonText}>Remove task</Text>
-            </Pressable>
+
             <Pressable
                 onPress={async () => {
                     await cancelAllNotifications();

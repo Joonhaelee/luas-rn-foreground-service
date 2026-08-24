@@ -1,32 +1,32 @@
 import React from 'react';
-import { RNForegroundServiceManager } from './RNForegroundServiceManager';
-import type { RNNotification, RNSimpleNotif, NotificationClickEvent, ChannelNotificationConfig } from './types';
+import { generateRandomNotificationId, RNForegroundServiceManager } from './RNForegroundServiceManager';
+import type { RNNotification, RNBaseNotif, NotificationClickEvent, ChannelNotificationConfig } from './types';
 
 export function useRNNotification(channelConfigs?: ChannelNotificationConfig[]) {
-    const addOnNotificationPress = React.useCallback((eventHandler: (e: NotificationClickEvent) => void) => {
+    const subscribeNotificationOnPress = React.useCallback((eventHandler: (e: NotificationClickEvent) => void) => {
         // subscribe and return unsubscribe()
-        return RNForegroundServiceManager.addNotificationPressEventListener(eventHandler);
+        return RNForegroundServiceManager.subscribeNotificationOnPressEvent(eventHandler);
     }, []);
 
-    const notificationSeq = React.useRef<number>(0);
+    // const notificationSeq = React.useRef<number>(0);
 
-    /**
-     * Generate a sequential notification id.
-     * the same notification id will replace the previous one.
-     * @private
-     * @returns number. may be unique in every month
-     */
-    const generateNotificationId = React.useCallback(() => {
-        notificationSeq.current = notificationSeq.current + 1;
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        // get the total minutes from start of the month
-        const minutes = Math.floor((now.getTime() - startOfMonth.getTime()) / (1000 * 60));
-        return minutes + notificationSeq.current;
-    }, []);
+    // /**
+    //  * Generate a sequential notification id.
+    //  * the same notification id will replace the previous one.
+    //  * @private
+    //  * @returns number. may be unique in every month
+    //  */
+    // const generateNotificationId = React.useCallback(() => {
+    //     notificationSeq.current = notificationSeq.current + 1;
+    //     const now = new Date();
+    //     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    //     // get the total minutes from start of the month
+    //     const minutes = Math.floor((now.getTime() - startOfMonth.getTime()) / (1000 * 60));
+    //     return minutes + notificationSeq.current;
+    // }, []);
 
     const buildNotification = React.useCallback(
-        (notif: RNSimpleNotif): RNNotification => {
+        (notif: RNBaseNotif): RNNotification => {
             if (channelConfigs?.length) {
                 const channel = channelConfigs.find((ch) => ch.channelId === notif.channelId);
                 if (!channel) {
@@ -37,23 +37,23 @@ export function useRNNotification(channelConfigs?: ChannelNotificationConfig[]) 
                 return {
                     ...channel.defaultNotification,
                     ...notif,
-                    id: notif.id ?? channel.defaultNotification?.id ?? generateNotificationId(),
+                    id: notif.id ?? channel.defaultNotification?.id ?? generateRandomNotificationId(),
                 };
             } else {
                 return notif.id !== undefined
                     ? notif
                     : {
                           ...notif,
-                          id: generateNotificationId(),
+                          id: generateRandomNotificationId(),
                       };
             }
         },
-        [channelConfigs, generateNotificationId]
+        [channelConfigs]
     );
 
     // for non-foreground service notification
     const postNotification = React.useCallback(
-        async (notif: RNNotification): Promise<number> => {
+        async (notif: RNNotification): Promise<string> => {
             const notification = buildNotification(notif);
             const id = await RNForegroundServiceManager.postNotification(notification);
             return id;
@@ -61,7 +61,7 @@ export function useRNNotification(channelConfigs?: ChannelNotificationConfig[]) 
         [buildNotification]
     );
 
-    const cancelNotification = React.useCallback(async (id: number) => {
+    const cancelNotification = React.useCallback(async (id: string) => {
         await RNForegroundServiceManager.cancelNotification(id);
     }, []);
 
@@ -70,7 +70,7 @@ export function useRNNotification(channelConfigs?: ChannelNotificationConfig[]) 
     }, []);
 
     return {
-        addOnNotificationPress,
+        subscribeNotificationOnPress,
         postNotification,
         cancelNotification,
         cancelAllNotifications,
