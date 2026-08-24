@@ -14,6 +14,7 @@ export interface RNNotificationChannel {
      * @default 'high'
      */
     importance?: 'none' | 'min' | 'low' | 'default' | 'high';
+    visibility?: 'secret' | 'private' | 'public';
     /**
      * @default true
      */
@@ -21,7 +22,7 @@ export interface RNNotificationChannel {
     /**
      * @default true
      */
-    showBadge?: boolean;
+    badge?: boolean;
     /**
      * @default true
      */

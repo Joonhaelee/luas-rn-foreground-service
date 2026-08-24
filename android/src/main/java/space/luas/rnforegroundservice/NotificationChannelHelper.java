@@ -1,5 +1,6 @@
 package space.luas.rnforegroundservice;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -127,16 +128,26 @@ class NotificationChannelHelper {
                 }
                 : NotificationManager.IMPORTANCE_HIGH;
 
+        int visibility = channelConfig.hasKey("visibility")
+            ? switch (Objects.requireNonNull(channelConfig.getString("visibility")).toLowerCase()) {
+            case "private" -> Notification.VISIBILITY_PRIVATE;
+            case "public" -> Notification.VISIBILITY_PUBLIC;
+            case "secret" -> Notification.VISIBILITY_SECRET;
+            default -> Notification.VISIBILITY_PUBLIC;
+        }
+            : NotificationManager.IMPORTANCE_HIGH;
+
         boolean lights =
             !channelConfig.hasKey("lights") || channelConfig.getBoolean("lights");
         boolean vibration =
             !channelConfig.hasKey("vibration") || channelConfig.getBoolean("vibration");
         boolean showBadge =
-            !channelConfig.hasKey("showBadge") || channelConfig.getBoolean("showBadge");
+            !channelConfig.hasKey("badge") || channelConfig.getBoolean("badge");
 
         // Create channel
         NotificationChannel channel = new NotificationChannel(channelId,
                 channelName, importance);
+        channel.setLockscreenVisibility(visibility);
         channel.setDescription(channelDescription);
         channel.enableLights(lights);
         channel.enableVibration(vibration);
