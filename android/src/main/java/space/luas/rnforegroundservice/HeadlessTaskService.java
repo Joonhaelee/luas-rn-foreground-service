@@ -43,10 +43,12 @@ public class HeadlessTaskService extends HeadlessJsTaskService {
         // get headless task name
         String headlessTaskKey = extras.getString("headlessTaskKey");
         // get timeout from extras or use default
-        int timeout = (int) extras.getDouble("timeout", Constants.HEADLESS_TASK_DEFAULT_TIMEOUT);
+        int timeout = (int) extras.getDouble("timeout", 0);
+        if (timeout < 1) {
+            timeout = (int) (extras.getDouble("interval",  Constants.HEADLESS_TASK_DEFAULT_INTERVAL) * 0.8);
+        }
         // get allowedInForeground flag (default true for foreground service tasks)
         boolean allowedInForeground = extras.getBoolean("allowedInForeground", true);
-
         if (headlessTaskKey == null || headlessTaskKey.isEmpty()) {
             Log.e(TAG, "getTaskConfig(): headlessTaskKey can not be null or empty");
             return null;

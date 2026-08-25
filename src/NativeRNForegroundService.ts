@@ -14,6 +14,10 @@ export interface RNNotificationChannel {
      * @default 'high'
      */
     importance?: 'none' | 'min' | 'low' | 'default' | 'high';
+    /**
+     * Notification visibility on lock screen
+     * @default 'public'
+     */
     visibility?: 'secret' | 'private' | 'public';
     /**
      * @default true
@@ -30,8 +34,8 @@ export interface RNNotificationChannel {
 }
 
 export interface RNBaseNotif {
-    /** notification unique id: 필수.
-     * if not passed, the unique value will be filled before call native function
+    /** notification unique id.
+     * - if not passed, the unique value will be filled before calling native function
      */
     id?: string;
     channelId: string;
@@ -51,7 +55,7 @@ export interface RNBaseNotif {
  * Notification configuration for foreground service
  */
 export interface RNNotification extends RNBaseNotif {
-    // channelId, id, title, message came from SimpleNotif
+    // channelId, id, title, body came from RNBaseNotif
     /**
      * notification long message.
      * if message is long
@@ -91,27 +95,6 @@ export interface RNNotification extends RNBaseNotif {
         max: number;
         curr: number;
     };
-    /**
-     * user defined button1 label
-     */
-    button1Label?: string;
-    /**
-     * user defined button1 value
-     */
-    button1Value?: string;
-    /**
-     * user defined button2 label
-     */
-    button2Label?: string;
-    /**
-     * user defined button2 value
-     */
-    button2Value?: string;
-    /**
-     * to show progress, progressBarMax must > 0
-     */
-    progressBarMax?: number;
-    progressBarCurr?: number;
     color?: string;
     /**
      * if true, successive notification which has same id will NOT be altered
@@ -147,7 +130,7 @@ export interface RNHeadlessTaskConfig {
     firstInterval?: number;
     /**
      * JS Task must be completed in this timeout
-     * @default 8000 (8 seconds)
+     * @default 80% of interval
      */
     timeout?: number;
 }

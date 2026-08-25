@@ -1,5 +1,6 @@
 package space.luas.rnforegroundservice;
 
+import android.os.Build;
 import android.app.Service;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -141,6 +142,11 @@ class NotificationHelper {
 
     public Notification buildServiceNotification(Service service, Bundle bundle) {
         NotificationCompat.Builder builder = this.buildNotificationBuilder(bundle);
+        // prevent 10 sec notification delay
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Force immediate notification delivery, bypassing the 10-second delay
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
+        }
         // keep bundle for repost notification if foreground service associated
         builder.setDeleteIntent(this.getDismissIntent(service, bundle));
         return builder.build();
@@ -224,8 +230,7 @@ class NotificationHelper {
                         .setOnlyAlertOnce(setOnlyAlertOnce)
                         .setAutoCancel(autoCancel)
                         .setOngoing(ongoing)
-                        .setContentIntent(this.getContentClickIntent())
-                    ;
+                        .setContentIntent(this.getContentClickIntent());
 
         // Large icon. right side of notification
         String largeIconName = bundle.getString("largeIcon");

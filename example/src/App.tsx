@@ -4,6 +4,10 @@ import { Channels } from './components/Channels';
 import { Service } from './components/Service';
 import { Notification } from './components/Notification';
 import { AppInitProvider } from './contexts/AppInitProvider';
+import { RNForegroundServiceManager } from '@luas/rn-foreground-service';
+import { defaultNotifications } from './notificationConfig';
+
+RNForegroundServiceManager.setDefaults(defaultNotifications);
 
 export default function App() {
     const [mode, setMode] = React.useState<'channel' | 'service' | 'notification'>('channel');

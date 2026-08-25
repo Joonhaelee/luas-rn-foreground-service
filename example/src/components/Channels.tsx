@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
-import { useRNNotificationChannels, type RNNotificationChannel } from '@luas/rn-foreground-service';
+import { androidNotificationChannelHelper as helper, type RNNotificationChannel } from '@luas/rn-foreground-service';
 import { notificationChannels } from '../notificationConfig';
 
 function Channel(channel: { channel: RNNotificationChannel }) {
@@ -12,20 +12,13 @@ function Channel(channel: { channel: RNNotificationChannel }) {
 }
 
 export function Channels() {
-    const {
-        getNotificationChannels,
-        createNotificationChannels,
-        deleteNotificationChannels,
-        notificationChannelsExist,
-    } = useRNNotificationChannels();
-
     const [channels, setChannels] = React.useState<RNNotificationChannel[]>([]);
     React.useEffect(() => {
         const func = async () => {
-            setChannels(await getNotificationChannels());
+            setChannels(await helper.getChannels());
         };
         func();
-    }, [getNotificationChannels]);
+    }, []);
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
@@ -33,8 +26,8 @@ export function Channels() {
             <Pressable
                 onPress={async () => {
                     try {
-                        await createNotificationChannels(notificationChannels);
-                        setChannels(await getNotificationChannels());
+                        await helper.createChannels(notificationChannels);
+                        setChannels(await helper.getChannels());
                         Alert.alert('channels created');
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
@@ -48,8 +41,8 @@ export function Channels() {
             <Pressable
                 onPress={async () => {
                     try {
-                        await deleteNotificationChannels(notificationChannels.map((ch) => ch.channelId));
-                        setChannels(await getNotificationChannels());
+                        await helper.deleteChannels(notificationChannels.map((ch) => ch.channelId));
+                        setChannels(await helper.getChannels());
                         Alert.alert('channels deleted');
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
@@ -63,7 +56,7 @@ export function Channels() {
             <Pressable
                 onPress={async () => {
                     try {
-                        const rts = await notificationChannelsExist(notificationChannels.map((ch) => ch.channelId));
+                        const rts = await helper.isChannelsExist(notificationChannels.map((ch) => ch.channelId));
                         Alert.alert(notificationChannels.map((ch, i) => `${ch.channelName}: ${rts[i]}`).join(`\n`));
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);

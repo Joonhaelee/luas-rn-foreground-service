@@ -21,6 +21,5 @@ public class Constants {
         static final String ERROR_SERVICE_ERROR = "ERROR_SERVICE_ERROR";
         static final String ERROR_PERMISSION_DENIED = "ERROR_PERMISSION_DENIED";
 
-        static final int HEADLESS_TASK_DEFAULT_TIMEOUT = 8000; // 8 seconds
         static final int HEADLESS_TASK_DEFAULT_INTERVAL = 10000; // 10 seconds
 }

@@ -36,7 +36,7 @@ export interface TaskInfo extends TaskOptions {
     tickCount: number;
 }
 
-export type TaskRunner = (taskInfo: TaskInfo) => Promise<void> | void;
+export type TaskRunner = (taskInfo: TaskInfo, headlessTaskData?: any) => Promise<void> | void;
 /**
  * Internal task representation
  * @internal

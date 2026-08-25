@@ -9,8 +9,8 @@
 
 // Export types for TypeScript users
 export * from './types';
+export * from './utils';
 export * from './RNForegroundServiceManager';
 // hook for easy-use
-export * from './useRNNotificationChannels';
-export * from './useRNForegroundService';
-export * from './useRNNotification';
+export * from './notificationChannelHelper';
+export * from './notificationHelper';

@@ -1,26 +1,24 @@
 import React from 'react';
 import { Text, StyleSheet, Pressable, ScrollView, Alert, View } from 'react-native';
-import { useRNNotification } from '@luas/rn-foreground-service';
+import { notificationHelper as helper } from '@luas/rn-foreground-service';
 import { defaultNotifications, miscNotificationChannel, notificationChannels } from '../notificationConfig';
 
 export function Notification() {
     const [latestNotificationId, setLatestNotificationId] = React.useState<string | undefined>(undefined);
-    const { subscribeNotificationOnPress, postNotification, cancelNotification, cancelAllNotifications } =
-        useRNNotification(notificationChannels, defaultNotifications);
 
     React.useEffect(() => {
-        return subscribeNotificationOnPress(async (e) => {
+        return helper.subscribeNotificationOnPress(async (e) => {
             if (e.id !== undefined) {
                 try {
                     console.log('notification pressed', e);
-                    await cancelNotification(e.id);
+                    await helper.cancelNotification(e.id);
                     // eslint-disable-next-line no-catch-shadow, @typescript-eslint/no-shadow
                 } catch (e: any) {
                     console.log('cancelNotification error', e);
                 }
             }
         });
-    }, [subscribeNotificationOnPress, cancelNotification]);
+    }, []);
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
@@ -33,14 +31,17 @@ export function Notification() {
 Notification message Notification message Notification message Notification message Notification message Notification message Notification message Notification message`;
                     const longMessage = message;
                     try {
-                        const id = await postNotification({
-                            channelId: miscNotificationChannel.channelId,
-                            title: `New Notification`,
-                            body: message,
-                            longBody: longMessage,
-                            ongoing: true,
-                            autoCancel: false,
-                        });
+                        const id = await helper.postNotification(
+                            {
+                                channelId: miscNotificationChannel.channelId,
+                                title: `New Notification`,
+                                body: message,
+                                longBody: longMessage,
+                                ongoing: true,
+                                autoCancel: false,
+                            },
+                            defaultNotifications
+                        );
                         setLatestNotificationId(id);
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
@@ -56,14 +57,17 @@ Notification message Notification message Notification message Notification mess
 Notification message Notification message Notification message Notification message Notification message Notification message Notification message Notification message`;
                     const longMessage = message;
                     try {
-                        const id = await postNotification({
-                            channelId: miscNotificationChannel.channelId,
-                            title: `New Notification`,
-                            body: message,
-                            longBody: longMessage,
-                            ongoing: false,
-                            autoCancel: true,
-                        });
+                        const id = await helper.postNotification(
+                            {
+                                channelId: miscNotificationChannel.channelId,
+                                title: `New Notification`,
+                                body: message,
+                                longBody: longMessage,
+                                ongoing: false,
+                                autoCancel: true,
+                            },
+                            defaultNotifications
+                        );
                         setLatestNotificationId(id);
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
@@ -82,12 +86,15 @@ Notification message Notification message Notification message Notification mess
 Notification message Notification message Notification message Notification message Notification message Notification message Notification message Notification message`;
 
                         try {
-                            await postNotification({
-                                channelId: miscNotificationChannel.channelId,
-                                id: latestNotificationId,
-                                title: '(title) Same Notification',
-                                body: message,
-                            });
+                            await helper.postNotification(
+                                {
+                                    channelId: miscNotificationChannel.channelId,
+                                    id: latestNotificationId,
+                                    title: '(title) Same Notification',
+                                    body: message,
+                                },
+                                defaultNotifications
+                            );
                         } catch (e: any) {
                             Alert.alert('error. ' + e.message);
                         }
@@ -101,19 +108,22 @@ Notification message Notification message Notification message Notification mess
                 onPress={async () => {
                     const message = `${new Date().toISOString()} Notification message`;
                     try {
-                        const id = await postNotification({
-                            channelId: miscNotificationChannel.channelId,
-                            title: '(button) Notification',
-                            body: message,
-                            button1: {
-                                label: 'button100',
-                                value: 'button100-Value',
+                        const id = await helper.postNotification(
+                            {
+                                channelId: miscNotificationChannel.channelId,
+                                title: '(button) Notification',
+                                body: message,
+                                button1: {
+                                    label: 'button100',
+                                    value: 'button100-Value',
+                                },
+                                button2: {
+                                    label: 'button101',
+                                    value: 'button101-Value',
+                                },
                             },
-                            button2: {
-                                label: 'button101',
-                                value: 'button101-Value',
-                            },
-                        });
+                            defaultNotifications
+                        );
                         setLatestNotificationId(id);
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
@@ -127,18 +137,21 @@ Notification message Notification message Notification message Notification mess
                 onPress={async () => {
                     const message = `${new Date().toISOString()} Notification message`;
                     try {
-                        const id = await postNotification({
-                            channelId: miscNotificationChannel.channelId,
-                            title: '(largeIcon) Notification',
-                            body: message,
-                            largeIcon: 'ic_launcher',
-                            ongoing: true,
-                            autoCancel: false,
-                            progress: {
-                                max: 100,
-                                curr: 50,
+                        const id = await helper.postNotification(
+                            {
+                                channelId: miscNotificationChannel.channelId,
+                                title: '(largeIcon) Notification',
+                                body: message,
+                                largeIcon: 'ic_launcher',
+                                ongoing: true,
+                                autoCancel: false,
+                                progress: {
+                                    max: 100,
+                                    curr: 50,
+                                },
                             },
-                        });
+                            defaultNotifications
+                        );
                         setLatestNotificationId(id);
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
@@ -155,19 +168,22 @@ Notification message Notification message Notification message Notification mess
                     } else {
                         const message = `${new Date().toISOString()} Notification message`;
                         try {
-                            const id = await postNotification({
-                                id: latestNotificationId,
-                                channelId: miscNotificationChannel.channelId,
-                                title: '(largeIcon) Notification',
-                                body: message,
-                                largeIcon: 'ic_launcher',
-                                ongoing: true,
-                                autoCancel: false,
-                                progress: {
-                                    max: 100,
-                                    curr: 75,
+                            const id = await helper.postNotification(
+                                {
+                                    id: latestNotificationId,
+                                    channelId: miscNotificationChannel.channelId,
+                                    title: '(largeIcon) Notification',
+                                    body: message,
+                                    largeIcon: 'ic_launcher',
+                                    ongoing: true,
+                                    autoCancel: false,
+                                    progress: {
+                                        max: 100,
+                                        curr: 75,
+                                    },
                                 },
-                            });
+                                defaultNotifications
+                            );
                             setLatestNotificationId(id);
                         } catch (e: any) {
                             Alert.alert('error. ' + e.message);
@@ -182,16 +198,19 @@ Notification message Notification message Notification message Notification mess
                 onPress={async () => {
                     const message = `${new Date().toISOString()} Notification message`;
                     try {
-                        const id = await postNotification({
-                            id: latestNotificationId,
-                            channelId: miscNotificationChannel.channelId,
-                            title: 'Auto dismiss Notification',
-                            body: message,
-                            largeIcon: 'ic_launcher',
-                            ongoing: false,
-                            autoCancel: false,
-                            timeoutAfter: 5000,
-                        });
+                        const id = await helper.postNotification(
+                            {
+                                id: latestNotificationId,
+                                channelId: miscNotificationChannel.channelId,
+                                title: 'Auto dismiss Notification',
+                                body: message,
+                                largeIcon: 'ic_launcher',
+                                ongoing: false,
+                                autoCancel: false,
+                                timeoutAfter: 5000,
+                            },
+                            defaultNotifications
+                        );
                         setLatestNotificationId(id);
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
@@ -204,7 +223,7 @@ Notification message Notification message Notification message Notification mess
             <Pressable
                 onPress={async () => {
                     if (latestNotificationId !== undefined) {
-                        await cancelNotification(latestNotificationId);
+                        await helper.cancelNotification(latestNotificationId);
                         setLatestNotificationId(undefined);
                     }
                 }}
@@ -214,13 +233,14 @@ Notification message Notification message Notification message Notification mess
             </Pressable>
             <Pressable
                 onPress={async () => {
-                    await cancelAllNotifications();
+                    await helper.cancelAllNotifications();
                     setLatestNotificationId(undefined);
                 }}
                 style={[styles.button, styles.cancelButton]}
             >
                 <Text style={styles.buttonText}>Cancel all notifications</Text>
             </Pressable>
+            <View style={{ height: 100 }} />
         </ScrollView>
     );
 }

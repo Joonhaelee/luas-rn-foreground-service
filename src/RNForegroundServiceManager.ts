@@ -4,28 +4,16 @@ import type {
     TaskOptions,
     NotificationClickEvent,
     EventListenerCleanup,
-    RNNotificationChannel,
     RNNotification,
     TaskRunner,
     ForegroundServiceStateChangeEvent,
-    TaskInfo,
     TaskRuntime,
 } from './types';
+import { generateRandomId, mergeDefaultNotification } from './utils';
 
 /**
- * High-level manager for React Native Foreground Service
- *
- * Provides a simple, developer-friendly API for managing foreground services
- * with task management, notification customization, and event handling.
- *
- * Features:
- * - Task management system with parallel execution
- * - 500ms sampling interval for efficient task scheduling
- * - Android 13+ POST_NOTIFICATIONS permission checking
- * - Android 14+ service type validation
- * - Event handling for notification interactions
+ * await sleep()
  */
-
 async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(() => resolve(null), ms));
 }
@@ -43,84 +31,49 @@ async function waitUntil(startTimestamp: number, timeoutMs: number, until: () =>
     }
 }
 
-export const DEF_FOREGROUND_SERVICE_NOTIF_ID = 'rnfs.notification.id';
-export const RNFS_HEADLESS_TASK_KEY = 'RNForegroundServiceHeadlessTask';
+export const RNFS_HEADLESS_TASK_KEY = 'rnfs.headless.task.key';
 
-const CHARACTERS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-
-export function generateRandomNotificationId(): string {
-    let newId = '';
-    for (let i = 0; i < 20; i++) {
-        newId += CHARACTERS.charAt(Math.floor(Math.random() * CHARACTERS.length));
+/**
+ * post the notification
+ * - this method does not related with foreground service. just handle notification itself
+ */
+export async function postNotification(notif: RNNotification): Promise<string> {
+    if (Platform.OS !== 'android') {
+        throw new Error('ForegroundService is only supported on Android');
     }
-    return newId;
+    const noti = notif.id ? notif : { ...notif, id: generateRandomId() };
+    await NativeForegroundService.postNotification(noti);
+    console.log(`Notification posted`, noti);
+    return noti.id!;
 }
 
-/** validate if passed notification. will throw error if not valid */
-function isServiceNotification(notif: RNNotification): notif is Omit<RNNotification, 'id'> & { id: string } {
-    return Boolean(notif.id && notif.serviceType);
-}
+/**
+ * High-level manager for React Native Foreground Service
+ */
 
 export class RNForegroundServiceManager {
-    public static debug: boolean = true;
+    private static defaultNotifications?: Record<string, Partial<Omit<RNNotification, 'channelId'>>>;
+
+    public static setDefaults(defaultNotifications?: Record<string, Partial<Omit<RNNotification, 'channelId'>>>) {
+        this.defaultNotifications = defaultNotifications;
+    }
     private static task: TaskRuntime | undefined;
     // Prevent race conditions
     private static serviceStarting = false;
-    // headless task loop interval(ms) should be 500 or 1000. this is different than task interval
-    // private static samplingInterval = 1000;
     private static eventEmitter = new NativeEventEmitter(NativeModules.NativeRNForegroundService);
 
-    /** get, create, delete, check notification channel */
-    static async getNotificationChannels(channelId?: string) {
-        return await NativeForegroundService.getNotificationChannels(channelId);
-    }
-
-    static async createNotificationChannel(config: RNNotificationChannel) {
-        await NativeForegroundService.createNotificationChannel(config);
-        if (this.debug) {
-            console.log('notifcation channel created', config);
-        }
-    }
-    static async deleteNotificationChannel(channelId: string) {
-        await NativeForegroundService.deleteNotificationChannel(channelId);
-        if (this.debug) {
-            console.log(`notifcation channel deleted. channelId=${channelId}`);
-        }
-    }
-    static async notificationChannelExist(channelId: string) {
-        return await NativeForegroundService.notificationChannelExist(channelId);
-    }
     /**
-     * Register the foreground service task runner
-     *
-     * MUST be called before start(), typically in your index.js/index.ts entry file.
-     *
+     * Register the foreground service task runner     *
+     * - MUST be called before start(), typically in your index.js/index.ts entry file.
      * @example
      * ```typescript
-     * // index.ts
-     * import { RNForegroundServiceManager } from '@luas/rn-foreground-service';
-     * import { AppRegistry } from 'react-native';
-     * import App from './App';
-     *
      * RNForegroundServiceManager.registerHeadlessTask();
      * AppRegistry.registerComponent('MyApp', () => App);
      * ```
      */
     static registerHeadlessTask(): void {
-        if (!NativeForegroundService.isRunning()) {
-            AppRegistry.registerHeadlessTask(RNFS_HEADLESS_TASK_KEY, () => this.headlessTaskRunner);
-        }
+        AppRegistry.registerHeadlessTask(RNFS_HEADLESS_TASK_KEY, () => this.headlessTaskRunner);
     }
-
-    /** validate if passed notification. will throw error if not valid */
-    // private static validateNotification(notif: RNNotification, forService?: boolean) {
-    //     if (notif.id === undefined) {
-    //         throw new Error('Notification invalid. id must be set');
-    //     }
-    //     if (forService && !notif.serviceType) {
-    //         throw new Error('Service notification invalid. serviceType must be set');
-    //     }
-    // }
 
     /**
      * Start the foreground service with a notification
@@ -149,10 +102,6 @@ export class RNForegroundServiceManager {
         if (Platform.OS !== 'android') {
             throw new Error('ForegroundService is only supported on Android');
         }
-        // if (!isServiceNotification(notif)) {
-
-        // }
-        // this.validateNotification(notif, true);
 
         // Check POST_NOTIFICATIONS permission (Android 13+)
         const hasPermission = await NativeForegroundService.checkPostNotificationsPermission();
@@ -171,24 +120,17 @@ export class RNForegroundServiceManager {
 
         // Prevent race condition: Check if already starting
         if (this.serviceStarting) {
-            if (this.debug) {
-                console.log('Service is already starting, please wait...');
-            }
-            return undefined;
+            throw new Error('Service is already starting, please try later...');
         }
 
         // Check native service state to sync with actual state
         if (NativeForegroundService.isRunning()) {
-            if (this.debug) {
-                console.log('Foreground service is already running.');
-            }
-            // fixme
-            // return undefined;
+            throw new Error('Foreground service is already running.');
         }
 
         try {
             this.serviceStarting = true;
-            const noti = notif.id ? notif : { ...notif, id: DEF_FOREGROUND_SERVICE_NOTIF_ID };
+            const noti = mergeDefaultNotification(notif, this.defaultNotifications);
             this.task = {
                 runner,
                 info: {
@@ -214,33 +156,11 @@ export class RNForegroundServiceManager {
              * then NativeForegroundService.isRunning() should return true if service started successfully
              */
             const rt = await waitUntil(Date.now(), 3000, () => NativeForegroundService.isRunning());
-            if (!rt) {
-                console.log(`startService() done. but awaited NativeForegroundService.isRunning()=false`);
-                return undefined;
-            }
-            if (this.debug) {
-                console.log(`Foreground service started. NativeForegroundService.isRunning()=${rt}`, noti);
-            }
-            return noti.id;
+            return rt ? noti.id : undefined;
         } finally {
             this.serviceStarting = false;
         }
     }
-
-    // static async runAssociatedHeadlessTask() {
-    //     /* Start headless task runner
-    //      * android looper repeated on every samplingInterval(1s)
-    //      * then, on headlessTaskRunner(), it will apply task interval
-    //      */
-    //     await NativeForegroundService.runHeadlessTask({
-    //         taskName: this.headlessTaskName,
-    //         // onetime task 에 사용되는 delay
-    //         delay: this.samplingInterval,
-    //         // repeatable task 에 사용되는 delay
-    //         loopDelay: this.samplingInterval,
-    //         onLoop: true,
-    //     });
-    // }
 
     /**
      * Update the notification of a running service
@@ -267,43 +187,8 @@ export class RNForegroundServiceManager {
         if (Platform.OS !== 'android') {
             throw new Error('ForegroundService is only supported on Android');
         }
-        const noti = notif.id ? notif : { ...notif, id: DEF_FOREGROUND_SERVICE_NOTIF_ID };
-        // this.validateNotification(notif, true);
+        const noti = mergeDefaultNotification(notif, this.defaultNotifications);
         await NativeForegroundService.updateServiceNotification(noti);
-        if (this.debug) {
-            console.log(`Foreground service notification updated`, noti);
-        }
-        return noti.id!;
-    }
-
-    /**
-     * post the notification
-     * this method does not related with foreground service.
-     * just handle notification itself
-     *
-     * @param notif posted notification
-     *
-     * @example
-     * ```typescript
-     * await ForegroundService.postNotification({
-     *   channelId: 'myChannel',
-     *   id: 1,
-     *   title: 'Download Progress',
-     *   message: '50% complete',
-     *   progress: { max: 100, curr: 50 }
-     * });
-     * ```
-     */
-    static async postNotification(notif: RNNotification): Promise<string> {
-        if (Platform.OS !== 'android') {
-            throw new Error('ForegroundService is only supported on Android');
-        }
-        // this.validateNotification(notif);
-        const noti = notif.id ? notif : { ...notif, id: generateRandomNotificationId() };
-        await NativeForegroundService.postNotification(noti);
-        if (this.debug) {
-            console.log(`Notification posted`, noti);
-        }
         return noti.id!;
     }
 
@@ -321,8 +206,7 @@ export class RNForegroundServiceManager {
             return true;
         }
         if (!NativeForegroundService.isRunning()) {
-            console.info(`can not stopService(), NativeForegroundService is not running`);
-            return true;
+            throw new Error(`can not stopService(), NativeForegroundService is not running`);
         }
         await NativeForegroundService.stopService();
         this.task = undefined;
@@ -331,34 +215,8 @@ export class RNForegroundServiceManager {
          * NativeForegroundService.isRunning() should be false if service stopped successfully.
          */
 
-        const rt = await waitUntil(Date.now(), 3000, () => !NativeForegroundService.isRunning());
-        if (!rt) {
-            console.warn(`stopService() done. but awaited NativeForegroundService.isRunning() is still true`);
-        } else if (this.debug) {
-            console.log(
-                `Foreground service stopped. NativeForegroundService.isRunning()=${NativeForegroundService.isRunning()}`
-            );
-        }
-        return true;
+        return await waitUntil(Date.now(), 3000, () => !NativeForegroundService.isRunning());
     }
-
-    /**
-     * Force stop the foreground service regardless of start counter
-     *
-     * This will also clear all tasks and reset state
-     */
-    // static async stopAll(): Promise<void> {
-    //     if (Platform.OS !== 'android') {
-    //         return;
-    //     }
-    //     await NativeForegroundService.stopServiceAll();
-    //     this.serviceStarting = false;
-    //     // Clear all tasks immediately
-    //     this.tasks = {};
-    //     if (this.debug) {
-    //         console.log('Service force stopped and all tasks cleared');
-    //     }
-    // }
 
     /**
      * Check if the foreground service is currently running
@@ -381,9 +239,6 @@ export class RNForegroundServiceManager {
             return;
         }
         await NativeForegroundService.cancelNotification(id);
-        if (this.debug) {
-            console.log(`notification "${id}" cancelled`);
-        }
     }
 
     /**
@@ -394,9 +249,6 @@ export class RNForegroundServiceManager {
             return;
         }
         await NativeForegroundService.cancelAllNotifications();
-        if (this.debug) {
-            console.log(`all notifications cancelled`);
-        }
     }
 
     /**
@@ -404,26 +256,8 @@ export class RNForegroundServiceManager {
      *
      * @param callback Function called when notification or buttons are tapped
      * @returns Cleanup function to remove the listener
-     *
-     * @example
-     * ```typescript
-     * useEffect(() => {
-     *   const cleanup = ForegroundService.eventListener((event) => {
-     *     if (event.main) {
-     *       // Main notification tapped
-     *       navigation.navigate('Home');
-     *     }
-     *     if (event.button === 'pause') {
-     *       // Pause button tapped
-     *       handlePause();
-     *     }
-     *   });
-     *
-     *   return cleanup; // Cleanup on unmount
-     * }, []);
-     * ```
      */
-    static addServiceStateChangeListener(
+    static subscribeServiceStateChange(
         callback: (event: ForegroundServiceStateChangeEvent) => void
     ): EventListenerCleanup {
         const subscription = this.eventEmitter.addListener('onServiceStateChanged', callback);
@@ -439,28 +273,17 @@ export class RNForegroundServiceManager {
      * Internal task runner - executes tasks at their scheduled times
      * @private
      */
-    private static headlessTaskRunner = async (taskData: any): Promise<void> => {
+    private static headlessTaskRunner = async (headlessTaskData: any): Promise<void> => {
         try {
-            console.log('starting js headlessTaskRunner() tick', taskData);
             if (!NativeForegroundService.isRunning()) {
                 return;
             }
-            if (!this.task) {
-                console.log('no js tasks found');
-                return;
+            if (this.task) {
+                this.task.info.tickCount = (this.task.info.tickCount ?? 0) + 1;
+                await this.task.runner(this.task.info, headlessTaskData);
             }
-            this.task.info.tickCount = (this.task.info.tickCount ?? 0) + 1;
-            await this.task.runner(this.task.info);
         } catch (error) {
-            console.error('Error in ForegroundService taskRunner:', error);
+            console.error('Error while running headless task.', error);
         }
     };
-
-    /**
-     * Generate a random task ID
-     * @private
-     */
-    private static generateTaskId(): string {
-        return generateRandomNotificationId();
-    }
 }

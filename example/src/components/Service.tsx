@@ -1,21 +1,21 @@
 import React from 'react';
 import { Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
-import { generateRandomNotificationId, useRNForegroundService, type TaskInfo } from '@luas/rn-foreground-service';
-import { defaultNotifications, notificationChannels, serviceNotificationChannel } from '../notificationConfig';
+import { RNForegroundServiceManager as rnfsMgr, generateRandomId, type TaskInfo } from '@luas/rn-foreground-service';
+import { serviceNotificationChannel } from '../notificationConfig';
 
 export function Service() {
-    const {
-        isRunning,
-        subscribeNotificationOnPress,
-        startService,
-        stopService,
-        updateServiceNotification,
-        cancelAllNotifications,
-    } = useRNForegroundService(notificationChannels, defaultNotifications);
+    // const {
+    //     isRunning,
+    //     subscribeNotificationOnPress,
+    //     startService,
+    //     stopService,
+    //     updateServiceNotification,
+    //     cancelAllNotifications,
+    // } = useRNForegroundService(notificationChannels, defaultNotifications);
     const [latestNotificationId, setLatestNotificationId] = React.useState<string | undefined>(undefined);
 
     React.useEffect(() => {
-        return subscribeNotificationOnPress(async (e: any) => {
+        return rnfsMgr.subscribeNotificationOnPressEvent(async (e: any) => {
             if (e.id !== undefined) {
                 try {
                     // notificaiton 을 cancel 해도 foreground service 가 중단되지 않습니다.
@@ -26,7 +26,7 @@ export function Service() {
                 }
             }
         });
-    }, [subscribeNotificationOnPress]);
+    }, []);
 
     const taskRunner = React.useCallback((taskInfo: TaskInfo) => {
         console.log(`[${new Date().toISOString()}] taskRunner called`, taskInfo);
@@ -34,13 +34,13 @@ export function Service() {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.text}>Service is running: {isRunning ? 'true' : 'false'}</Text>
+            <Text style={styles.text}>Service is running: {rnfsMgr.isRunning() ? 'true' : 'false'}</Text>
             {/* Start Foreground Service */}
             <Pressable
                 onPress={async () => {
                     try {
                         // if id not provided, the default service notification id used
-                        const id = await startService(
+                        const id = await rnfsMgr.startService(
                             taskRunner,
                             {
                                 taskName: 'MyTask',
@@ -78,7 +78,7 @@ export function Service() {
             <Pressable
                 onPress={async () => {
                     try {
-                        await updateServiceNotification({
+                        await rnfsMgr.updateServiceNotification({
                             id: latestNotificationId,
                             channelId: serviceNotificationChannel.channelId,
                             title: 'Updated',
@@ -108,7 +108,7 @@ export function Service() {
             <Pressable
                 onPress={async () => {
                     try {
-                        await updateServiceNotification({
+                        await rnfsMgr.updateServiceNotification({
                             id: latestNotificationId,
                             channelId: serviceNotificationChannel.channelId,
                             title: 'Updated Auto Dismiss',
@@ -139,9 +139,9 @@ export function Service() {
             <Pressable
                 style={styles.button}
                 onPress={async () => {
-                    const id = generateRandomNotificationId();
+                    const id = generateRandomId();
                     try {
-                        await updateServiceNotification({
+                        await rnfsMgr.updateServiceNotification({
                             id,
                             channelId: serviceNotificationChannel.channelId,
                             title: `ID=${id} Updated`,
@@ -170,7 +170,7 @@ export function Service() {
 
             <Pressable
                 onPress={async () => {
-                    await cancelAllNotifications();
+                    await rnfsMgr.cancelAllNotifications();
                 }}
                 style={styles.button}
             >
@@ -181,7 +181,7 @@ export function Service() {
                 style={[styles.button, styles.buttonRed]}
                 onPress={async () => {
                     try {
-                        await stopService();
+                        await rnfsMgr.stopService();
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
                     }
