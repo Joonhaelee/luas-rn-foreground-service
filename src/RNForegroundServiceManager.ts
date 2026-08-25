@@ -58,6 +58,9 @@ export class RNForegroundServiceManager {
         this.defaultNotifications = defaultNotifications;
     }
     private static task: TaskRuntime | undefined;
+    public static getTaskRuntime() {
+        return this.task;
+    }
     // Prevent race conditions
     private static serviceStarting = false;
     private static eventEmitter = new NativeEventEmitter(NativeModules.NativeRNForegroundService);
