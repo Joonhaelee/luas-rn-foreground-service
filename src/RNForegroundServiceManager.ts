@@ -220,7 +220,7 @@ export class RNForegroundServiceManager {
             await waitUntil(Date.now(), 3000, () => !NativeForegroundService.isRunning());
             return noti.id!;
         } else {
-            await NativeForegroundService.stopService();
+            await NativeForegroundService.stopService(null);
             return await waitUntil(Date.now(), 3000, () => !NativeForegroundService.isRunning());
         }
     }
