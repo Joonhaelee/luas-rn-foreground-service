@@ -208,9 +208,11 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
         boolean promiseResolved = false;
         if (notif != null) {
             if (validateNotif(notif, promise)) {
+                Log.d(TAG, "stopService() called with notif");
                 intent.putExtra(Constants.NOTIFICATION_CONFIG, Arguments.toBundle(notif));
             }
             else {
+                Log.w(TAG, "stopService() called with invalid notif");
                 promiseResolved = true;
             }
         }
