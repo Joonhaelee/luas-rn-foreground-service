@@ -124,8 +124,8 @@ export interface RNNotification extends RNBaseNotif {
 }
 
 export interface RNHeadlessTaskConfig {
-    taskId?: string;
-    taskName?: string;
+    taskId: string;
+    taskName: string;
     interval: number;
     firstInterval?: number;
     /**

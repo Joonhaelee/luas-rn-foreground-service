@@ -144,11 +144,9 @@ export class RNForegroundServiceManager {
             };
             await NativeForegroundService.startService(noti);
             await NativeForegroundService.runHeadlessTask({
+                ...taskOptions,
                 // must be fixed. must be same with registerHeadlessTask()
                 headlessTaskKey: RNFS_HEADLESS_TASK_KEY,
-                // native java 에서 사용하는 headless task 반복 interval
-                interval: taskOptions.interval,
-                firstInterval: taskOptions.firstInterval,
                 // js task must be completed in this timeout
                 timeout: taskOptions.timeout ?? Math.round(taskOptions.interval * 0.8),
             });

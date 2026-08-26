@@ -36,6 +36,7 @@ export function Service() {
                         const id = await rnfsMgr.startService(
                             taskRunner,
                             {
+                                taskId: generateRandomId(),
                                 taskName: 'MyTask',
                                 interval: 10000,
                             },
