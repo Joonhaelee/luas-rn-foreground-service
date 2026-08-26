@@ -204,21 +204,27 @@ export class RNForegroundServiceManager {
      * @param options Optional configuration
      * @param options.clearTasks Whether to clear all tasks (default: false)
      */
-    static async stopService(): Promise<boolean> {
+    static async stopService(notif?: RNNotification): Promise<boolean | string> {
         if (Platform.OS !== 'android') {
             return true;
         }
         if (!NativeForegroundService.isRunning()) {
             throw new Error(`can not stopService(), NativeForegroundService is not running`);
         }
-        await NativeForegroundService.stopService();
-        this.task = undefined;
         /* NativeForegroundService.stopService() may not update NativeForegroundService.isRunning() immediately
          * so, here we wait until NativeForegroundService.isRunning() updated to false while 1000ms
          * NativeForegroundService.isRunning() should be false if service stopped successfully.
          */
-
-        return await waitUntil(Date.now(), 3000, () => !NativeForegroundService.isRunning());
+        this.task = undefined;
+        if (notif) {
+            const noti = mergeDefaultNotification(notif, this.defaultNotifications);
+            await NativeForegroundService.stopService(noti);
+            await waitUntil(Date.now(), 3000, () => !NativeForegroundService.isRunning());
+            return noti.id!;
+        } else {
+            await NativeForegroundService.stopService();
+            return await waitUntil(Date.now(), 3000, () => !NativeForegroundService.isRunning());
+        }
     }
 
     /**

@@ -43,18 +43,18 @@ class NotificationHelper {
      *
      * @param bundle Configuration bundle from React Native
      */
-    public void postNotification(Bundle bundle, Promise promise) {
+    public boolean postNotification(Bundle bundle) {
         try {
             Notification notification = this.buildNotification(bundle);
             String id = bundle.getString("id");
             assert id != null : "notification id can not be null";
             this.notificationManager.notify(id.hashCode(), notification);
             Log.d(TAG, "notification posted. id=" + id);
-            promise.resolve(true);
+            return true;
         }
         catch (Exception e) {
             Log.e(TAG, "Failed to post notification", e);
-            promise.reject(Constants.ERROR_SERVICE_ERROR, "Failed to post notification.", e);
+            return false;
         }
     }
 

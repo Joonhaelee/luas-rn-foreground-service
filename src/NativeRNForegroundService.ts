@@ -171,7 +171,7 @@ export interface Spec extends TurboModule {
     /**
      * Start the foreground service with a notification
      *
-     * @param config Notification configuration
+     * @param notif Notification configuration
      * @returns Promise that resolves when service starts successfully
      * @throws Error if configuration is invalid or permissions are missing
      *
@@ -185,22 +185,21 @@ export interface Spec extends TurboModule {
      * });
      * ```
      */
-    startService(config: RNNotification): Promise<void>;
+    startService(notif: RNNotification): Promise<void>;
 
     /**
      * Stop the foreground service (decrements internal counter)
-     *
      * @returns Promise that resolves when service stops
      *
      * @note If start() was called multiple times, stop() must be called
      * the same number of times to fully stop the service
      */
-    stopService(): Promise<void>;
+    stopService(notif?: RNNotification): Promise<void>;
 
     /**
      * Update the notification of a running service
      *
-     * @param config Updated notification configuration
+     * @param notif Updated notification configuration
      * @returns Promise that resolves when notification is updated
      * @throws Error if service is not running
      *
@@ -216,7 +215,7 @@ export interface Spec extends TurboModule {
      * });
      * ```
      */
-    updateServiceNotification(config: RNNotification): Promise<void>;
+    updateServiceNotification(notif: RNNotification): Promise<void>;
 
     // /**
     //  * Force stop the foreground service regardless of start counter
@@ -230,7 +229,7 @@ export interface Spec extends TurboModule {
      *
      * @returns Promise that resolves when service is forcefully stopped
      */
-    postNotification(config: RNNotification): Promise<void>;
+    postNotification(notif: RNNotification): Promise<void>;
 
     /**
      * Check if the foreground service is currently running

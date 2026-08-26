@@ -4,14 +4,7 @@ import { RNForegroundServiceManager as rnfsMgr, generateRandomId, type TaskInfo 
 import { serviceNotificationChannel } from '../notificationConfig';
 
 export function Service() {
-    // const {
-    //     isRunning,
-    //     subscribeNotificationOnPress,
-    //     startService,
-    //     stopService,
-    //     updateServiceNotification,
-    //     cancelAllNotifications,
-    // } = useRNForegroundService(notificationChannels, defaultNotifications);
+    const [isRunning, setIsRunning] = React.useState<boolean>(() => rnfsMgr.isRunning());
     const [latestNotificationId, setLatestNotificationId] = React.useState<string | undefined>(undefined);
 
     React.useEffect(() => {
@@ -34,7 +27,7 @@ export function Service() {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.text}>Service is running: {rnfsMgr.isRunning() ? 'true' : 'false'}</Text>
+            <Text style={styles.text}>Service is running: {isRunning ? 'true' : 'false'}</Text>
             {/* Start Foreground Service */}
             <Pressable
                 onPress={async () => {
@@ -48,8 +41,8 @@ export function Service() {
                             },
                             {
                                 channelId: serviceNotificationChannel.channelId,
-                                title: 'Start',
-                                body: new Date().toISOString(),
+                                title: 'Service started',
+                                body: 'The notification will be cleared when service stopped',
                                 ongoing: true,
                                 button1: {
                                     label: 'button1',
@@ -66,6 +59,7 @@ export function Service() {
                             }
                         );
                         setLatestNotificationId(id);
+                        setIsRunning(rnfsMgr.isRunning());
                     } catch (e: any) {
                         Alert.alert('error. ' + e.message);
                     }
@@ -182,12 +176,48 @@ export function Service() {
                 onPress={async () => {
                     try {
                         await rnfsMgr.stopService();
+                        setIsRunning(rnfsMgr.isRunning());
                     } catch (e: any) {
+                        console.log('error. ' + e.message);
                         Alert.alert('error. ' + e.message);
                     }
                 }}
             >
                 <Text style={styles.buttonText}>{`Stop foreground service`}</Text>
+            </Pressable>
+            {/* Stop service */}
+            <Pressable
+                style={[styles.button, styles.buttonRed]}
+                onPress={async () => {
+                    try {
+                        const id = generateRandomId();
+                        await rnfsMgr.stopService({
+                            id,
+                            channelId: serviceNotificationChannel.channelId,
+                            title: `After notification`,
+                            body: 'The notification will be cleared after 10s',
+                            // button1: {
+                            //     label: 'button20',
+                            //     value: 'button20Value',
+                            // },
+                            // button2: {
+                            //     label: 'button21',
+                            //     value: 'button21Value',
+                            // },
+                            // progress: {
+                            //     max: 100,
+                            //     curr: 40,
+                            // },
+                            timeoutAfter: 10000,
+                        });
+                        setIsRunning(rnfsMgr.isRunning());
+                    } catch (e: any) {
+                        console.log('error. ' + e.message);
+                        Alert.alert('error. ' + e.message);
+                    }
+                }}
+            >
+                <Text style={styles.buttonText}>{`Stop foreground service with notification`}</Text>
             </Pressable>
         </ScrollView>
     );

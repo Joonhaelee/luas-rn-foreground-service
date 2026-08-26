@@ -16,6 +16,7 @@ public class ServiceTypeManager {
     public static final String TYPE_LOCATION = "location";
     public static final String TYPE_MEDIA_PLAYBACK = "mediaPlayback";
 
+
     /**
      * Convert string service type to ServiceInfo constant for Android 14+
      *

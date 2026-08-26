@@ -5,6 +5,8 @@ import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.util.Log;
 
@@ -80,7 +82,7 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
             map.putString("channelDescription", channel.getDescription());
 //            map.putBoolean("vibrate", channel.shouldVibrate());
 //            map.putBoolean("lights", channel.shouldShowLights());
-//            map.putBoolean("showBadge", channel.canShowBadge());
+//            map.putBoolean("badge", channel.canShowBadge());
             map.putString("importance",
                 switch (channel.getImportance()) {
                     case NotificationManager.IMPORTANCE_DEFAULT -> "default";
@@ -141,19 +143,42 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
      * we here, we use startForegroundService() regardless of app back/foreground state.
      *
      *
-     * @param notificationConfig Notification configuration from JavaScript
+     * @param notif Notification configuration from JavaScript
      * @param promise Promise to resolve/reject
      */
     @ReactMethod
-    public void startService(ReadableMap notificationConfig, Promise promise) {
+    public void startService(ReadableMap notif, Promise promise) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            try {
+                ComponentName component = new ComponentName(this.reactContext, ForegroundService.class);
+                ServiceInfo info =
+                    this.reactContext.getPackageManager().getServiceInfo(component, PackageManager.GET_META_DATA);
+                if (info.getForegroundServiceType() == 0) {
+                    Log.e(
+                        TAG,
+                        "No foregroundServiceType declared for space.luas.rnforegroundservice.ForegroundService in"
+                            + " your AndroidManifest.xml. Android 14+ requires an explicit"
+                            + " foregroundServiceType. Add <service"
+                            + " android:name=\"space.luas.rnforegroundservice.ForegroundService\""
+                            + " android:foregroundServiceType=\"yourType\" /> to your app manifest."
+                            + " Aborting foreground service start.");
+                    promise.reject(Constants.ERROR_INVALID_CONFIG, "No foregroundServiceType declared for space.luas.rnforegroundservice.ForegroundService");
+                    return;
+                }
+            } catch (PackageManager.NameNotFoundException e) {
+                Log.e(TAG, "ForegroundService not found in manifest", e);
+                promise.reject(Constants.ERROR_INVALID_CONFIG, "ForegroundService not found in manifest");
+                return;
+            }
+        }
+
         // Validate configuration
-        if (!validateParams(notificationConfig, true, promise)) {
-            Log.w(TAG, "startService(). invalid parameter");
-            promise.reject(Constants.ERROR_INVALID_CONFIG, "invalid parameter");
+        if (!validateServiceStartNotif(notif, promise)) {
+            Log.e(TAG, "startService(). invalid service start notification");
         }
         else if (ForegroundService.getIsRunning()) {
             Log.w(TAG, "startService(). service is already running. will just post notification");
-            this.updateServiceNotification(notificationConfig, promise);
+            this.updateServiceNotification(notif, promise);
             promise.resolve(null);
         }
         else {
@@ -161,7 +186,7 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
                 Log.d(TAG, "startService(). calling context.startForegroundService()");
                 Intent intent = new Intent(reactContext, ForegroundService.class);
                 intent.setAction(Constants.ACTION_FOREGROUND_SERVICE_START);
-                intent.putExtra(Constants.NOTIFICATION_CONFIG, Arguments.toBundle(notificationConfig));
+                intent.putExtra(Constants.NOTIFICATION_CONFIG, Arguments.toBundle(notif));
                 reactContext.startForegroundService(intent);
                 promise.resolve(null);
             } catch (IllegalStateException | SecurityException e) {
@@ -174,45 +199,55 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
 
     /**
      * Stop the foreground service (decrements internal counter)
+     * if passed notif is NOT valid, just stop service and reject promise
      */
     @ReactMethod
-    public void stopService(Promise promise) {
+    public void stopService(@Nullable ReadableMap notif, Promise promise) {
         Intent intent = new Intent(reactContext, ForegroundService.class);
         intent.setAction(Constants.ACTION_FOREGROUND_SERVICE_STOP);
+        boolean promiseResolved = false;
+        if (notif != null) {
+            if (validateNotif(notif, promise)) {
+                intent.putExtra(Constants.NOTIFICATION_CONFIG, Arguments.toBundle(notif));
+            }
+            else {
+                promiseResolved = true;
+            }
+        }
         try {
             // Send stop action via startService (service will handle decrement and stop if needed)
             reactContext.startService(intent);
-            promise.resolve(null);
+            if (!promiseResolved) {
+                promise.resolve(null);
+            }
         } catch (IllegalStateException e) {
             // If startService fails, try stopService as fallback
             try {
                 reactContext.stopService(intent);
-                promise.resolve(null);
+                if (!promiseResolved) {
+                    promise.resolve(null);
+                }
             } catch (Exception e2) {
-                promise.reject(Constants.ERROR_SERVICE_ERROR,
-                    "Service stop failed: " + e2.getMessage(), e2);
+                Log.e(TAG, "Service stop failed: " + e2.getMessage(), e2);
+                if (!promiseResolved) {
+                    promise.reject(Constants.ERROR_SERVICE_ERROR,
+                        "Service stop failed: " + e2.getMessage(), e2);
+                }
             }
         }
-//        Intent intent = new Intent(reactContext, ForegroundService.class);
-//        try {
-//            Log.d(TAG, "stopService -> calling context.stopService()");
-//            return reactContext.stopService(intent);
-//        } catch (Exception e) {
-//            Log.w(TAG, "stopService -> context.stopService() failed");
-//            throw e;
-//        }
     }
 
     /**
      * Update notification of running service
      *
-     * @param notificationConfig Updated notification configuration
+     * @param notif Updated notification configuration
      * @param promise Promise to resolve/reject
      */
     @ReactMethod
-    public void updateServiceNotification(ReadableMap notificationConfig, Promise promise) {
+    public void updateServiceNotification(ReadableMap notif, Promise promise) {
         // check channelId and mandatory props, will reject if invalid
-        if (!validateParams(notificationConfig, true, promise)) {
+        if (!validateNotif(notif, promise)) {
+            Log.e(TAG, "updateServiceNotification(). invalid notification");
             return;
         }
         // if foreground service, delegate notification to ForegroundService
@@ -224,7 +259,7 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
         try {
             Intent intent = new Intent(reactContext, ForegroundService.class);
             intent.setAction(Constants.ACTION_UPDATE_NOTIFICATION);
-            intent.putExtra(Constants.NOTIFICATION_CONFIG, Arguments.toBundle(notificationConfig));
+            intent.putExtra(Constants.NOTIFICATION_CONFIG, Arguments.toBundle(notif));
             // pass intent to service
             ComponentName componentName = reactContext.startService(intent);
             if (componentName != null) {
@@ -243,20 +278,27 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
     /**
      * Update notification of running service
      *
-     * @param notificationConfig Updated notification configuration
+     * @param notif Updated notification configuration
      * @param promise Promise to resolve/reject
      */
     @ReactMethod
-    public void postNotification(ReadableMap notificationConfig, Promise promise) {
+    public void postNotification(ReadableMap notif, Promise promise) {
         // check channelId and mandatory props, will reject if invalid
-        if (!validateParams(notificationConfig, false, promise)) {
+        if (!validateNotif(notif, promise)) {
+            Log.e(TAG, "postNotification(). invalid notification");
             return;
         }
         // post notification
         try {
             NotificationHelper notificationHelper = new NotificationHelper(reactContext.getApplicationContext());
-            notificationHelper.postNotification(Arguments.toBundle(notificationConfig), promise);
+            if (notificationHelper.postNotification(Arguments.toBundle(notif))) {
+                promise.resolve(true);
+            }
+            else {
+                promise.reject(Constants.ERROR_SERVICE_ERROR, "Failed to post notification.");
+            }
         } catch (IllegalStateException | SecurityException e) {
+            Log.e(TAG, "postNotification() error", e);
             promise.reject(Constants.ERROR_SERVICE_ERROR,
                 "Post notification failed: " + e.getMessage(), e);
         }
@@ -372,12 +414,47 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
     /**
      * Validate notification configuration
      *
+     * @param notif Configuration to validate
+     * @param promise Promise to reject if invalid
+     * @return true if valid, false otherwise
+     */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    private boolean validateServiceStartNotif(ReadableMap notif, Promise promise) {
+
+        if (this.validateNotif(notif, promise)) {
+            // for service notification. serviceType is mandatory and must have permission
+            // Validate service type for Android 14+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                if (!notif.hasKey("serviceType")) {
+                    promise.reject(Constants.ERROR_INVALID_CONFIG,
+                        "serviceType is required for Android 14+. "
+                            + "Please specify: 'dataSync', 'location', or 'mediaPlayback'");
+                    return false;
+                }
+
+                String serviceType = notif.getString("serviceType");
+                if (!permissionChecker.hasForegroundServicePermission(serviceType)) {
+                    promise.reject(Constants.ERROR_PERMISSION_DENIED,
+                        permissionChecker.getPermissionErrorMessage(serviceType));
+                    return false;
+                }
+            }
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    /**
+     * Validate notification configuration
+     *
      * @param config Configuration to validate
      * @param promise Promise to reject if invalid
      * @return true if valid, false otherwise
      */
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    private boolean validateParams(ReadableMap config, boolean forService, Promise promise) {
+    private boolean validateNotif(ReadableMap config, Promise promise) {
 
         // Check permission. POST_NOTIFICATIONS (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -424,26 +501,6 @@ public class RNForegroundServiceModule extends NativeRNForegroundServiceSpec {
             promise.reject(Constants.ERROR_INVALID_CONFIG,
                     "Notification config is invalid - body is required");
             return false;
-        }
-
-        // for service notification. serviceType is mandatory and must have permission
-        if (forService) {
-            // Validate service type for Android 14+
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                if (!config.hasKey("serviceType")) {
-                    promise.reject(Constants.ERROR_INVALID_CONFIG,
-                        "serviceType is required for Android 14+. "
-                            + "Please specify: 'dataSync', 'location', or 'mediaPlayback'");
-                    return false;
-                }
-
-                String serviceType = config.getString("serviceType");
-                if (!permissionChecker.hasForegroundServicePermission(serviceType)) {
-                    promise.reject(Constants.ERROR_PERMISSION_DENIED,
-                        permissionChecker.getPermissionErrorMessage(serviceType));
-                    return false;
-                }
-            }
         }
         return true;
     }

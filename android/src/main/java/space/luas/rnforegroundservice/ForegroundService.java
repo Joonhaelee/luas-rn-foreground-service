@@ -12,6 +12,8 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import com.facebook.react.ReactApplication;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
@@ -44,7 +46,6 @@ public class ForegroundService extends Service {
     }
     private String primaryNotificationId = null;
     private final List<String> additionalNotificationIds = new ArrayList<>();
-
     private Handler handler;
     private Context context;
     private Runnable runnableCode;
@@ -60,8 +61,9 @@ public class ForegroundService extends Service {
 
     @Override
     public void onDestroy() {
-        if (ForegroundService.isRunning) {
-            doStopService();
+        if (ForegroundService.isRunning || runnableCode != null || handler != null ||
+            primaryNotificationId != null || taskConfig != null) {
+            doStopService(null);
         }
         Log.d(TAG, "ForegroundService destroyed");
         super.onDestroy();
@@ -104,7 +106,7 @@ public class ForegroundService extends Service {
                 doStartService(intent);
                 break;
             case Constants.ACTION_FOREGROUND_SERVICE_STOP:
-                doStopService();
+                doStopService(intent);
                 break;
             case Constants.ACTION_UPDATE_NOTIFICATION:
                 doUpdateNotification(intent);
@@ -211,16 +213,39 @@ public class ForegroundService extends Service {
     /**
      * Handle ACTION_FOREGROUND_SERVICE_STOP
      */
-    private void doStopService() {
+    private void doStopService(@Nullable Intent intent) {
         Log.d(TAG, "Force stopping foreground service");
+        // reset headless task looper
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
+            Log.d(TAG, "Handler callbacks cleared");
+        }
+        if (runnableCode != null) {
+            runnableCode = null;
+        }
         cancelAdditionalNotifications();
-        stopForeground(STOP_FOREGROUND_REMOVE);
+        // reset associated values
         primaryNotificationId = null;
-        cleanupResources();
+        taskConfig = null;
         ForegroundService.isRunning = false;
-        sendServiceStateChangeEventToReactNative();
+        stopForeground(STOP_FOREGROUND_REMOVE);
         stopSelf();
+        if (intent != null && intent.getExtras() != null && intent.getExtras().containsKey(Constants.NOTIFICATION_CONFIG)) {
+            postNotificationAfterStop(intent.getExtras().getBundle(Constants.NOTIFICATION_CONFIG));
+        }
+        sendServiceStateChangeEventToReactNative();
     }
+
+    private void postNotificationAfterStop(Bundle bundle) {
+        // post notification
+        try {
+            NotificationHelper notificationHelper = new NotificationHelper(context.getApplicationContext());
+            notificationHelper.postNotification(bundle);
+        } catch (IllegalStateException | SecurityException e) {
+            Log.e(TAG, "postNotificationAfterStop() error", e);
+        }
+    }
+//    private void
 
     private void cancelAdditionalNotifications() {
         if (!additionalNotificationIds.isEmpty()) {
@@ -356,22 +381,6 @@ public class ForegroundService extends Service {
             Log.e(TAG, "handleRunHeadlessTask(). error", e);
         }
     }
-
-    /**
-     * Clean up all resources (handler callbacks, tasks, etc.)
-     */
-    private void cleanupResources() {
-        if (handler != null) {
-            handler.removeCallbacksAndMessages(null);
-            Log.d(TAG, "Handler callbacks cleared");
-        }
-        if (runnableCode != null) {
-            runnableCode = null;
-        }
-        taskConfig = null;
-    }
-
-
 
     /**
      * Initialize the looping task runner
