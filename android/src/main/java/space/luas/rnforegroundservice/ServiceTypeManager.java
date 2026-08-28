@@ -14,7 +14,6 @@ public class ServiceTypeManager {
 
     public static final String TYPE_DATA_SYNC = "dataSync";
     public static final String TYPE_LOCATION = "location";
-    public static final String TYPE_MEDIA_PLAYBACK = "mediaPlayback";
 
 
     /**
@@ -27,7 +26,6 @@ public class ServiceTypeManager {
     public static int getServiceTypeFlag(String serviceType) {
         return switch (serviceType != null ? serviceType : "null") {
             case TYPE_LOCATION -> ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION;
-            case TYPE_MEDIA_PLAYBACK -> ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK;
             default -> ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
         };
     }
@@ -41,7 +39,6 @@ public class ServiceTypeManager {
     public static String getRequiredPermission(String serviceType) {
         return switch (serviceType!= null ? serviceType : "null") {
             case TYPE_LOCATION -> "android.permission.FOREGROUND_SERVICE_LOCATION";
-            case TYPE_MEDIA_PLAYBACK -> "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK";
             default -> "android.permission.FOREGROUND_SERVICE_DATA_SYNC";
         };
     }
@@ -58,6 +55,6 @@ public class ServiceTypeManager {
             return false;
         }
         // location and mediaPlayback require additional type-specific permissions
-        return TYPE_LOCATION.equals(serviceType) || TYPE_MEDIA_PLAYBACK.equals(serviceType);
+        return TYPE_LOCATION.equals(serviceType);
     }
 }

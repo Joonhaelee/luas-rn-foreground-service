@@ -197,18 +197,6 @@ export function Service() {
                             channelId: serviceNotificationChannel.channelId,
                             title: `After notification`,
                             body: 'The notification will be cleared after 10s',
-                            // button1: {
-                            //     label: 'button20',
-                            //     value: 'button20Value',
-                            // },
-                            // button2: {
-                            //     label: 'button21',
-                            //     value: 'button21Value',
-                            // },
-                            // progress: {
-                            //     max: 100,
-                            //     curr: 40,
-                            // },
                             timeoutAfter: 10000,
                         });
                         setIsRunning(rnfsMgr.isRunning());

@@ -13,14 +13,13 @@
     <!-- Android 14+ foreground service type permissions -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application>
         <!-- Main foreground service with Android 14+ service types -->
         <service android:name=".ForegroundService"
             android:stopWithTask="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync|location|mediaPlayback" />
+            android:foregroundServiceType="dataSync|location" />
 
         <!-- Headless task service -->
         <service android:name=".HeadlessTaskService"
