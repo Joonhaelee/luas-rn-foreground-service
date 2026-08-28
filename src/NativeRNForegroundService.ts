@@ -116,7 +116,7 @@ export interface RNNotification extends RNBaseNotif {
      * Required for Android 14 and above
      * @default 'dataSync'
      */
-    serviceType?: 'dataSync' | 'location' | 'mediaPlayback';
+    serviceType?: 'dataSync' | 'location';
     /** auto dismiss timout
      * @default 0
      */

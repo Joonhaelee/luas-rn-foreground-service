@@ -3,7 +3,7 @@ import type { RNNotificationChannel, RNNotification, RNHeadlessTaskConfig } from
 export type { RNNotificationChannel, RNNotification, RNBaseNotif } from './NativeRNForegroundService';
 
 /**
- * Service types for Android 14+ foreground services. 'dataSync' | 'location' | 'mediaPlayback';
+ * Service types for Android 14+ foreground services. 'dataSync' | 'location';
  * 'location' need additional permissions
  */
 export type ServiceType = RNNotification['serviceType'];
